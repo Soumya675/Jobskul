@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User, JobApplication, JobListing } from '../types';
 import {
   CheckCircle2,
@@ -13,7 +13,9 @@ import {
   ExternalLink,
   Trash2,
   Award,
-  BookOpen
+  BookOpen,
+  Search,
+  X
 } from 'lucide-react';
 
 interface CandidateDashboardProps {
@@ -33,7 +35,23 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
   onNavigateToTab,
   onViewJob,
 }) => {
+  const [appSearch, setAppSearch] = useState('');
+  const [appStatusFilter, setAppStatusFilter] = useState('All');
   const completion = currentUser.profileCompletion || 85;
+
+  const filteredApplications = applications.filter((app) => {
+    if (appSearch.trim()) {
+      const q = appSearch.trim().toLowerCase();
+      const matches =
+        app.jobTitle.toLowerCase().includes(q) ||
+        app.company.toLowerCase().includes(q) ||
+        (app.candidateSkills && app.candidateSkills.some(s => s.toLowerCase().includes(q))) ||
+        app.status.toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+    if (appStatusFilter !== 'All' && app.status !== appStatusFilter) return false;
+    return true;
+  });
 
   const pipelineStages = [
     { key: 'applied', label: 'Applied' },
@@ -178,7 +196,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
 
       {/* Application Tracking Pipeline Section */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-slate-900 flex items-center space-x-2">
               <Clock className="w-5 h-5 text-blue-600" />
@@ -188,9 +206,40 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
               Live updates as recruiters review, screen, shortlist, and invite you to interviews.
             </p>
           </div>
-          <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
-            {applications.length} Active Applications
-          </span>
+          
+          <div className="flex items-center space-x-2">
+            <div className="relative w-full sm:w-56">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={appSearch}
+                onChange={(e) => setAppSearch(e.target.value)}
+                placeholder="Search applied roles, company..."
+                className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+              {appSearch && (
+                <button
+                  onClick={() => setAppSearch('')}
+                  className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <select
+              value={appStatusFilter}
+              onChange={(e) => setAppStatusFilter(e.target.value)}
+              className="bg-white border border-slate-200 rounded-lg py-1.5 px-2 text-xs font-semibold text-slate-700"
+            >
+              <option value="All">All Statuses</option>
+              <option value="applied">Applied</option>
+              <option value="under_review">Under Review</option>
+              <option value="shortlisted">Shortlisted</option>
+              <option value="interview">Interview</option>
+              <option value="selected">Selected</option>
+            </select>
+          </div>
         </div>
 
         {applications.length === 0 ? (
@@ -199,14 +248,24 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
             <p className="text-xs text-slate-500">Explore open opportunities with one-click apply or build custom ATS resumes.</p>
             <button
               onClick={() => onNavigateToTab('jobs')}
-              className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-xs"
+              className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer"
             >
               Browse Jobs Now
             </button>
           </div>
+        ) : filteredApplications.length === 0 ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-2">
+            <p className="text-xs font-semibold text-slate-600">No applications match your search &ldquo;{appSearch}&rdquo;</p>
+            <button
+              onClick={() => { setAppSearch(''); setAppStatusFilter('All'); }}
+              className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
+            >
+              Clear filter
+            </button>
+          </div>
         ) : (
           <div className="space-y-4">
-            {applications.map((app) => {
+            {filteredApplications.map((app) => {
               const currentStageIdx = getStageIndex(app.status);
               const isRejected = app.status === 'rejected';
 

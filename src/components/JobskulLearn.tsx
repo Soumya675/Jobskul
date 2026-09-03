@@ -14,7 +14,9 @@ import {
   Download,
   Share2,
   Terminal,
-  Check
+  Check,
+  Search,
+  X
 } from 'lucide-react';
 
 interface JobskulLearnProps {
@@ -33,6 +35,20 @@ export const JobskulLearn: React.FC<JobskulLearnProps> = ({
   const [completedTaskIndices, setCompletedTaskIndices] = useState<number[]>([0, 1, 2]);
   const [showCertModal, setShowCertModal] = useState(false);
   const [certificateData, setCertificateData] = useState<any>(null);
+  const [trackSearch, setTrackSearch] = useState('');
+
+  const filteredProjects = projects.filter(p => {
+    if (trackSearch.trim()) {
+      const q = trackSearch.trim().toLowerCase();
+      const matches =
+        p.title.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        p.skillsAcquired.some(s => s.toLowerCase().includes(q)) ||
+        p.description.toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+    return true;
+  });
 
   const toggleTask = (index: number) => {
     if (completedTaskIndices.includes(index)) {
@@ -102,24 +118,48 @@ export const JobskulLearn: React.FC<JobskulLearnProps> = ({
         </div>
       </div>
 
-      {/* Project Selector Chips */}
-      <div className="flex items-center space-x-2 overflow-x-auto pb-2">
-        {projects.map((proj) => {
-          const isSelected = selectedProject.id === proj.id;
-          return (
-            <button
-              key={proj.id}
-              onClick={() => setSelectedProject(proj)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border ${
-                isSelected
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              {proj.title}
-            </button>
-          );
-        })}
+      {/* Project Selector & Search */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Select Learning & Project Track ({filteredProjects.length} Available)</p>
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              value={trackSearch}
+              onChange={(e) => setTrackSearch(e.target.value)}
+              placeholder="Search tracks (e.g. Python, Docker)..."
+              className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
+            {trackSearch && (
+              <button
+                onClick={() => setTrackSearch('')}
+                className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+          {filteredProjects.map((proj) => {
+            const isSelected = selectedProject.id === proj.id;
+            return (
+              <button
+                key={proj.id}
+                onClick={() => setSelectedProject(proj)}
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border cursor-pointer ${
+                  isSelected
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {proj.title}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Workbench Grid */}

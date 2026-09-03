@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User, JobListing, JobApplication } from '../types';
 import {
   ShieldCheck,
@@ -9,7 +9,9 @@ import {
   CheckCircle2,
   XCircle,
   Database,
-  Server
+  Server,
+  Search,
+  X
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -27,9 +29,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onApproveJob,
   onCloseJob,
 }) => {
+  const [jobSearch, setJobSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+
   const candidatesCount = users.filter(u => u.role === 'candidate').length;
   const recruitersCount = users.filter(u => u.role === 'recruiter').length;
   const placedCount = applications.filter(a => a.status === 'selected').length;
+
+  const filteredJobs = jobs.filter(j => {
+    if (jobSearch.trim()) {
+      const q = jobSearch.trim().toLowerCase();
+      const matches =
+        j.title.toLowerCase().includes(q) ||
+        j.company.toLowerCase().includes(q) ||
+        j.location.toLowerCase().includes(q) ||
+        j.category.toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+    if (statusFilter !== 'All' && j.status !== statusFilter) return false;
+    return true;
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -86,9 +105,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* Job Moderation Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-bold text-slate-900 text-sm">Job Listings Moderation</h3>
-          <span className="text-xs text-slate-500">{jobs.length} Total Jobs in System</span>
+        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm">Job Listings Moderation</h3>
+            <p className="text-xs text-slate-500">Filter, search, approve, or archive postings across the platform.</p>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <div className="relative w-full sm:w-60">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={jobSearch}
+                onChange={(e) => setJobSearch(e.target.value)}
+                placeholder="Search job title, company, location..."
+                className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+              {jobSearch && (
+                <button
+                  onClick={() => setJobSearch('')}
+                  className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none"
+            >
+              <option value="All">All ({jobs.length})</option>
+              <option value="active">Active</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -103,40 +155,48 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {jobs.map((job) => (
-                <tr key={job.id} className="hover:bg-slate-50">
-                  <td className="p-4 font-bold text-slate-900">
-                    <div>{job.title}</div>
-                    <div className="text-[11px] text-slate-500 font-normal">{job.company}</div>
-                  </td>
-                  <td className="p-4 text-slate-600">{job.location} ({job.workMode})</td>
-                  <td className="p-4 font-semibold text-blue-700">{job.applicantCount} applicants</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                      job.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {job.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right space-x-2">
-                    {job.status === 'active' ? (
-                      <button
-                        onClick={() => onCloseJob(job.id)}
-                        className="px-2.5 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-md font-semibold text-xs"
-                      >
-                        Close Listing
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => onApproveJob(job.id)}
-                        className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-md font-semibold text-xs"
-                      >
-                        Activate Job
-                      </button>
-                    )}
+              {filteredJobs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-slate-500 text-xs font-semibold">
+                    No jobs match &ldquo;{jobSearch}&rdquo;
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredJobs.map((job) => (
+                  <tr key={job.id} className="hover:bg-slate-50">
+                    <td className="p-4 font-bold text-slate-900">
+                      <div>{job.title}</div>
+                      <div className="text-[11px] text-slate-500 font-normal">{job.company}</div>
+                    </td>
+                    <td className="p-4 text-slate-600">{job.location} ({job.workMode})</td>
+                    <td className="p-4 font-semibold text-blue-700">{job.applicantCount} applicants</td>
+                    <td className="p-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                        job.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {job.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right space-x-2">
+                      {job.status === 'active' ? (
+                        <button
+                          onClick={() => onCloseJob(job.id)}
+                          className="px-2.5 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-md font-semibold text-xs cursor-pointer"
+                        >
+                          Close Listing
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onApproveJob(job.id)}
+                          className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-md font-semibold text-xs cursor-pointer"
+                        >
+                          Activate Job
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

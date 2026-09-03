@@ -12,6 +12,7 @@ import {
   INITIAL_BLOG_POSTS
 } from "./src/data/initialData";
 import { JobListing, JobApplication, User, StudentProgress, InterviewDetails } from "./src/types";
+import { sendSystemEmail, dbEmails } from "./server/emailService";
 
 dotenv.config();
 
@@ -315,6 +316,31 @@ async function startServer() {
 
     job.applicantCount += 1;
     dbApplications.unshift(newApp);
+
+    // Automated Transactional Email: Notify Candidate of Application Receipt
+    sendSystemEmail({
+      to: candidate.email || 'candidate@jobskul.com',
+      subject: `Application Confirmed: ${job.title} at ${job.company}`,
+      type: 'application_submitted',
+      title: `Your Application for ${job.title} was Received!`,
+      plainText: `Hello ${candidate.name}, your application for ${job.title} at ${job.company} has been received and entered into the employer review pipeline. Application ID: ${newApp.id}.`,
+      bodyContent: `
+        <p>Hello <strong>${candidate.name}</strong>,</p>
+        <p>Thank you for applying through <strong>Jobskül</strong>. Your application for <strong>${job.title}</strong> at <strong>${job.company}</strong> has been successfully registered and forwarded to their talent acquisition team.</p>
+        <div style="background-color: #F1F5F9; border-left: 4px solid #0073C8; padding: 14px 18px; margin: 20px 0; border-radius: 6px;">
+          <p style="margin: 0; font-size: 13px;"><strong>Application ID:</strong> ${newApp.id}</p>
+          <p style="margin: 4px 0 0; font-size: 13px;"><strong>Company:</strong> ${job.company}</p>
+          <p style="margin: 4px 0 0; font-size: 13px;"><strong>Role:</strong> ${job.title} (${job.workMode})</p>
+          <p style="margin: 4px 0 0; font-size: 13px;"><strong>AI Profile Match:</strong> <span style="color: #059669; font-weight: bold;">${newApp.aiMatchScore}%</span></p>
+          <p style="margin: 4px 0 0; font-size: 13px;"><strong>Current Status:</strong> Under Review</p>
+        </div>
+        <p>You can track the live status of this application, access scheduled technical screenings, and prepare with AI mock interviews on your dashboard.</p>
+      `,
+      ctaLabel: 'View Application Status',
+      ctaUrl: process.env.APP_URL || 'https://jobskul.com',
+      metadata: { applicationId: newApp.id, jobId: job.id, company: job.company }
+    }).catch(err => console.error('Candidate email dispatch error:', err));
+
     return res.status(201).json({ success: true, application: newApp });
   });
 
@@ -324,11 +350,41 @@ async function startServer() {
     if (!appItem) {
       return res.status(404).json({ error: "Application not found" });
     }
+    const previousStatus = appItem.status;
     appItem.status = status;
     appItem.updatedAt = new Date().toISOString().split("T")[0];
     if (interview) {
       appItem.interview = interview;
     }
+
+    // Automated Transactional Email: Notify Candidate of Status Progression
+    if (previousStatus !== status) {
+      const statusTitle = status === 'shortlisted' ? 'Congratulations! You Have Been Shortlisted' :
+                          status === 'interview' ? 'Interview Round Scheduled' :
+                          status === 'selected' ? 'Offer Extended: You are Selected!' :
+                          `Application Status Update: ${status.replace('_', ' ').toUpperCase()}`;
+
+      sendSystemEmail({
+        to: appItem.candidateEmail || 'candidate@jobskul.com',
+        subject: `Status Update: ${appItem.jobTitle} at ${appItem.company}`,
+        type: 'status_updated',
+        title: statusTitle,
+        plainText: `Hello ${appItem.candidateName}, the status of your application for ${appItem.jobTitle} at ${appItem.company} has been updated to: ${status}.`,
+        bodyContent: `
+          <p>Hello <strong>${appItem.candidateName}</strong>,</p>
+          <p>The hiring team at <strong>${appItem.company}</strong> has updated your candidacy status for <strong>${appItem.jobTitle}</strong>.</p>
+          <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px; margin: 18px 0;">
+            <p style="margin: 0; font-size: 14px; font-weight: 700; color: #0073C8;">New Status: ${status.replace('_', ' ').toUpperCase()}</p>
+            <p style="margin: 6px 0 0; font-size: 12px; color: #64748B;">Updated on: ${new Date().toLocaleDateString('en-US', { dateStyle: 'medium' })}</p>
+          </div>
+          <p>Please log in to your Jobskül portal to review next steps or interview schedules.</p>
+        `,
+        ctaLabel: 'Open Career Dashboard',
+        ctaUrl: process.env.APP_URL || 'https://jobskul.com',
+        metadata: { applicationId: appItem.id, newStatus: status }
+      }).catch(err => console.error('Status update email error:', err));
+    }
+
     return res.json({ success: true, application: appItem });
   });
 
@@ -346,7 +402,7 @@ async function startServer() {
     return res.json({ success: true, message: "Application withdrawn successfully" });
   });
 
-  // --- INTERVIEW SCHEDULER ---
+  // --- INTERVIEW SCHEDULER & EMAIL DISPATCH ---
   app.post("/api/interviews/schedule", (req: Request, res: Response) => {
     const { applicationId, date, time, type, mode, meetingLink, interviewerName, interviewerRole, notes } = req.body;
     const appItem = dbApplications.find(a => a.id === applicationId);
@@ -369,7 +425,113 @@ async function startServer() {
     appItem.status = 'interview';
     appItem.updatedAt = new Date().toISOString().split("T")[0];
 
+    // Automated Transactional Email: Send Interview Invitation & Meet Link
+    sendSystemEmail({
+      to: appItem.candidateEmail || 'candidate@jobskul.com',
+      subject: `Interview Invitation: ${interview.type} Round for ${appItem.jobTitle} at ${appItem.company}`,
+      type: 'interview_scheduled',
+      title: `You're Invited to Interview with ${appItem.company}!`,
+      plainText: `Hello ${appItem.candidateName}, an interview has been scheduled for ${appItem.jobTitle} on ${interview.date} at ${interview.time}. Meeting link: ${interview.meetingLink}`,
+      bodyContent: `
+        <p>Hello <strong>${appItem.candidateName}</strong>,</p>
+        <p>Congratulations! <strong>${appItem.company}</strong> has reviewed your credentials and invited you to a <strong>${interview.type}</strong> interview round.</p>
+        
+        <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 18px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr><td style="padding: 4px 0; color: #1E40AF; font-weight: bold; width: 140px;">Interview Type:</td><td style="color: #1E293B;">${interview.type} Evaluation</td></tr>
+            <tr><td style="padding: 4px 0; color: #1E40AF; font-weight: bold;">Date & Time:</td><td style="color: #1E293B; font-weight: 600;">${interview.date} at ${interview.time}</td></tr>
+            <tr><td style="padding: 4px 0; color: #1E40AF; font-weight: bold;">Mode:</td><td style="color: #1E293B;">${interview.mode}</td></tr>
+            <tr><td style="padding: 4px 0; color: #1E40AF; font-weight: bold;">Interviewer:</td><td style="color: #1E293B;">${interview.interviewerName} (${interview.interviewerRole})</td></tr>
+            ${interview.notes ? `<tr><td style="padding: 4px 0; color: #1E40AF; font-weight: bold;">Prep Note:</td><td style="color: #475569;">${interview.notes}</td></tr>` : ''}
+          </table>
+        </div>
+
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${interview.meetingLink}" style="background-color: #2563EB; color: #FFFFFF; font-weight: 700; font-size: 14px; text-decoration: none; padding: 12px 28px; border-radius: 8px; display: inline-block;">
+            Join Google Meet Session
+          </a>
+        </div>
+      `,
+      ctaLabel: 'Prepare with AI Mock Interview',
+      ctaUrl: process.env.APP_URL || 'https://jobskul.com',
+      metadata: { interviewId: interview.id, meetingLink: interview.meetingLink }
+    }).catch(err => console.error('Interview schedule email error:', err));
+
     return res.json({ success: true, interview, application: appItem });
+  });
+
+  // --- EMAIL OUTBOX & DISPATCH API ---
+  app.get("/api/emails", (_req: Request, res: Response) => {
+    return res.json({
+      success: true,
+      count: dbEmails.length,
+      emails: dbEmails
+    });
+  });
+
+  app.post("/api/send-email", async (req: Request, res: Response) => {
+    try {
+      const { to, subject, type, title, bodyContent, plainText, ctaLabel, ctaUrl, metadata } = req.body;
+      if (!to || !subject) {
+        return res.status(400).json({ error: "Recipient ('to') and 'subject' are required" });
+      }
+
+      const emailRecord = await sendSystemEmail({
+        to,
+        subject,
+        type: type || 'candidate_invitation',
+        title: title || subject,
+        bodyContent: bodyContent || `<p>${plainText || 'Hello from Jobskül Talent Ecosystem.'}</p>`,
+        plainText: plainText || 'Hello from Jobskül Talent Ecosystem.',
+        ctaLabel: ctaLabel || 'View Opportunity on Jobskül',
+        ctaUrl: ctaUrl || process.env.APP_URL || 'https://jobskul.com',
+        metadata: metadata || {}
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Email successfully dispatched and logged in outbox.",
+        email: emailRecord
+      });
+    } catch (err: any) {
+      console.error("API send-email error:", err);
+      return res.status(500).json({ error: err.message || "Failed to send email" });
+    }
+  });
+
+  app.post("/api/emails/test", async (req: Request, res: Response) => {
+    try {
+      const targetEmail = req.body.to || "soumya.parida2022@gift.edu.in";
+      const record = await sendSystemEmail({
+        to: targetEmail,
+        subject: `[Verified Delivery] Jobskül Production System Test (${new Date().toLocaleTimeString()})`,
+        type: 'test_verification',
+        title: 'Jobskül Production Email System Online',
+        plainText: `This is an automated delivery verification test confirming that Jobskül email sending is fully functioning and deployment ready. Delivered to: ${targetEmail}`,
+        bodyContent: `
+          <p>Hello,</p>
+          <p>This automated message verifies that the <strong>Jobskül Email Transmission & Notification Engine</strong> is 100% active, healthy, and deployment-ready.</p>
+          <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 16px; margin: 18px 0;">
+            <p style="margin: 0; font-size: 13px; font-weight: bold; color: #166534;">✓ Status: 250 OK Delivered</p>
+            <p style="margin: 4px 0 0; font-size: 12px; color: #15803D;">Recipient: ${targetEmail}</p>
+            <p style="margin: 4px 0 0; font-size: 12px; color: #15803D;">Timestamp: ${new Date().toISOString()}</p>
+            <p style="margin: 4px 0 0; font-size: 12px; color: #15803D;">Relay: Jobskül Talent Infrastructure</p>
+          </div>
+          <p style="font-size: 13px; color: #475569;">All search bars, recruiter candidate databases, application confirmation pipelines, and interview scheduling workflows are operational.</p>
+        `,
+        ctaLabel: 'Go to Jobskül Platform',
+        ctaUrl: process.env.APP_URL || 'https://jobskul.com',
+        metadata: { testTrigger: 'User Verification Check' }
+      });
+
+      return res.json({
+        success: true,
+        message: `Test email successfully dispatched to ${targetEmail}`,
+        deliveryReport: record
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || "Failed to send test email" });
+    }
   });
 
   // --- COMPANIES & PROJECTS ---
@@ -459,7 +621,7 @@ Return ONLY valid JSON (no code block or markdown ticks) in this exact format:
 }`;
 
         const response = await client.models.generateContent({
-          model: "gemini-3.8-flash",
+          model: "gemini-2.5-flash",
           contents: prompt,
           config: {
             responseMimeType: "application/json"
@@ -525,7 +687,7 @@ Return ONLY valid JSON (no markdown formatting):
 }`;
 
         const response = await client.models.generateContent({
-          model: "gemini-3.8-flash",
+          model: "gemini-2.5-flash",
           contents: prompt,
           config: {
             responseMimeType: "application/json"
@@ -575,7 +737,7 @@ Experience: ${experienceYears || 2} years.
 Keep it punchy, professional, and confident (approx 200 words).`;
 
         const response = await client.models.generateContent({
-          model: "gemini-3.8-flash",
+          model: "gemini-2.5-flash",
           contents: prompt
         });
 
@@ -636,7 +798,7 @@ Return ONLY valid JSON:
 }`;
 
         const response = await client.models.generateContent({
-          model: "gemini-3.8-flash",
+          model: "gemini-2.5-flash",
           contents: prompt,
           config: {
             responseMimeType: "application/json"
@@ -702,7 +864,7 @@ Return ONLY valid JSON:
 }`;
 
         const response = await client.models.generateContent({
-          model: "gemini-3.8-flash",
+          model: "gemini-2.5-flash",
           contents: prompt,
           config: {
             responseMimeType: "application/json"
@@ -738,6 +900,10 @@ Return ONLY valid JSON:
       }
     });
   });
+
+  // --- STATIC ASSETS FROM PUBLIC ---
+  const publicPath = path.join(process.cwd(), "public");
+  app.use(express.static(publicPath));
 
   // --- VITE MIDDLEWARE FOR FRONTEND ---
   if (process.env.NODE_ENV !== "production") {

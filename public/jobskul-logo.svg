@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 260" width="100%" height="100%" fill="none">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@900&amp;family=Plus+Jakarta+Sans:wght@800&amp;display=swap');
+      .logo-title {
+        font-family: 'Nunito', 'Arial Rounded MT Bold', -apple-system, sans-serif;
+        font-weight: 900;
+        fill: #0073C8;
+      }
+      .tagline-text {
+        font-family: 'Plus Jakarta Sans', 'Nunito', -apple-system, sans-serif;
+        font-weight: 800;
+        fill: #FFFFFF;
+        letter-spacing: 4px;
+        text-transform: capitalize;
+      }
+    </style>
+  </defs>
+
+  <!-- Wordmark "Jobskül" with custom positioned elements -->
+  <g class="logo-title">
+    <!-- J -->
+    <path d="M 72 26 C 81 26 88 33 88 42 L 88 126 C 88 152 68 174 42 174 C 29 174 20 166 20 154 C 20 142 30 134 40 134 C 48 134 52 138 56 142 C 57 143 59 144 62 144 C 67 144 70 138 70 128 L 70 42 C 70 33 71 26 72 26 Z" fill="#0073C8" />
+    
+    <!-- Text rendering with rounded geometric font -->
+    <text x="96" y="166" font-size="168" class="logo-title" letter-spacing="-4">obsk</text>
+    
+    <!-- Base letter 'u' without standard umlaut dots -->
+    <text x="548" y="166" font-size="168" class="logo-title" letter-spacing="-4">u</text>
+    
+    <!-- Letter 'l' -->
+    <text x="668" y="166" font-size="168" class="logo-title">l</text>
+  </g>
+
+  <!-- Two exact bright red circular dots over 'u' -->
+  <circle cx="584" cy="42" r="19" fill="#E30613" />
+  <circle cx="648" cy="42" r="19" fill="#E30613" />
+
+  <!-- Lower Banner Bar: Hire | Train | Deploy -->
+  <!-- Block 1: Hire -->
+  <rect x="22" y="196" width="224" height="48" rx="2" fill="#0073C8" />
+  <text x="134" y="229" font-size="25" text-anchor="middle" class="tagline-text">Hire</text>
+
+  <!-- Block 2: Train -->
+  <rect x="250" y="196" width="234" height="48" rx="2" fill="#0073C8" />
+  <text x="367" y="229" font-size="25" text-anchor="middle" class="tagline-text">Train</text>
+
+  <!-- Block 3: Deploy -->
+  <rect x="488" y="196" width="220" height="48" rx="2" fill="#0073C8" />
+  <text x="598" y="229" font-size="25" text-anchor="middle" class="tagline-text">Deploy</text>
+</svg>

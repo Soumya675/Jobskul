@@ -15,6 +15,7 @@ import { HRServices } from './components/HRServices';
 import { CareerBlog } from './components/CareerBlog';
 import { AdminPanel } from './components/AdminPanel';
 import { AuthModal } from './components/AuthModal';
+import { SystemTestRunnerModal } from './components/SystemTestRunnerModal';
 
 import {
   INITIAL_JOBS,
@@ -38,7 +39,11 @@ import {
   ArrowRight,
   CheckCircle2,
   Filter,
-  ShieldCheck
+  ShieldCheck,
+  X,
+  RotateCcw,
+  SlidersHorizontal,
+  Check
 } from 'lucide-react';
 
 export function App() {
@@ -60,6 +65,8 @@ export function App() {
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLocation, setSearchLocation] = useState('');
+  const [sortBy, setSortBy] = useState<'relevant' | 'salary' | 'latest'>('relevant');
+  const [testRunnerOpen, setTestRunnerOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     category: 'All',
     workMode: 'All',
@@ -291,25 +298,66 @@ export function App() {
     }
   };
 
-  // --- FILTERED JOBS ---
+  const handleSearchSubmit = () => {
+    if (activeTab !== 'home' && activeTab !== 'jobs') {
+      setActiveTab('jobs');
+    }
+    setTimeout(() => {
+      const el = document.getElementById('job-listings-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  };
+
+  const handleQuickFilter = (skill: string) => {
+    if (skill === 'Remote Jobs') {
+      setFilters(prev => ({ ...prev, workMode: 'Remote' }));
+      setSearchQuery('');
+    } else if (skill === 'AI & Machine Learning') {
+      setSearchQuery('AI');
+      setFilters(prev => ({ ...prev, category: 'AI & Data Science' }));
+    } else if (skill === 'SAP MM/SD') {
+      setSearchQuery('SAP');
+      setFilters(prev => ({ ...prev, category: 'SAP & ERP' }));
+    } else if (skill === 'Python & Django') {
+      setSearchQuery('Python');
+    } else if (skill === 'React & Full Stack') {
+      setSearchQuery('React');
+    } else if (skill === 'MySQL & Backend') {
+      setSearchQuery('MySQL');
+    } else {
+      setSearchQuery(skill.split(' ')[0]);
+    }
+    handleSearchSubmit();
+  };
+
+  // --- FILTERED & SORTED JOBS ---
   const filteredJobs = useMemo(() => {
-    return jobs.filter(j => {
+    const list = jobs.filter(j => {
       // Keyword search
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
         const matches =
           j.title.toLowerCase().includes(q) ||
           j.company.toLowerCase().includes(q) ||
           j.requiredSkills.some(s => s.toLowerCase().includes(q)) ||
+          (j.preferredSkills && j.preferredSkills.some(s => s.toLowerCase().includes(q))) ||
           j.description.toLowerCase().includes(q) ||
-          j.category.toLowerCase().includes(q);
+          j.category.toLowerCase().includes(q) ||
+          j.workMode.toLowerCase().includes(q) ||
+          j.location.toLowerCase().includes(q) ||
+          (j.industry && j.industry.toLowerCase().includes(q));
         if (!matches) return false;
       }
 
       // Location search
-      if (searchLocation) {
-        const l = searchLocation.toLowerCase();
-        if (!j.location.toLowerCase().includes(l)) return false;
+      if (searchLocation.trim()) {
+        const l = searchLocation.trim().toLowerCase();
+        const matchesLoc =
+          j.location.toLowerCase().includes(l) ||
+          (l.includes('remote') && j.workMode.toLowerCase().includes('remote'));
+        if (!matchesLoc) return false;
       }
 
       // Sidebar filters
@@ -334,7 +382,27 @@ export function App() {
 
       return true;
     });
-  }, [jobs, searchQuery, searchLocation, filters]);
+
+    // Apply Sorting
+    if (sortBy === 'salary') {
+      list.sort((a, b) => (b.salaryMax || 0) - (a.salaryMax || 0));
+    } else if (sortBy === 'latest') {
+      list.sort((a, b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime());
+    } else if (sortBy === 'relevant') {
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        list.sort((a, b) => {
+          const aTitle = a.title.toLowerCase().includes(q) ? 2 : 0;
+          const bTitle = b.title.toLowerCase().includes(q) ? 2 : 0;
+          const aSkill = a.requiredSkills.some(s => s.toLowerCase().includes(q)) ? 1 : 0;
+          const bSkill = b.requiredSkills.some(s => s.toLowerCase().includes(q)) ? 1 : 0;
+          return (bTitle + bSkill) - (aTitle + aSkill);
+        });
+      }
+    }
+
+    return list;
+  }, [jobs, searchQuery, searchLocation, filters, sortBy]);
 
   // Saved Jobs for candidate
   const savedJobs = useMemo(() => {
@@ -408,9 +476,22 @@ export function App() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSearchSubmit();
+                      }}
                       placeholder="Job title, skill (Python, React, MySQL), or company..."
                       className="w-full p-2.5 text-xs sm:text-sm bg-transparent focus:outline-none text-[#0F172A] placeholder-[#94A3B8] font-medium"
                     />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 mr-2 shrink-0 transition-colors"
+                        title="Clear search query"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
 
                   <div className="hidden md:block w-px h-8 bg-[#E2E8F0]" />
@@ -421,14 +502,27 @@ export function App() {
                       type="text"
                       value={searchLocation}
                       onChange={(e) => setSearchLocation(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSearchSubmit();
+                      }}
                       placeholder="City (Bengaluru, Pune, Remote)..."
                       className="w-full p-2.5 text-xs sm:text-sm bg-transparent focus:outline-none text-[#0F172A] placeholder-[#94A3B8] font-medium"
                     />
+                    {searchLocation && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchLocation('')}
+                        className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 mr-2 shrink-0 transition-colors"
+                        title="Clear location"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
 
                   <button
-                    onClick={() => {}}
-                    className="w-full md:w-auto px-7 py-3 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg text-xs sm:text-sm font-bold shadow-xs transition-colors shrink-0 flex items-center justify-center space-x-2"
+                    onClick={handleSearchSubmit}
+                    className="w-full md:w-auto px-7 py-3 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg text-xs sm:text-sm font-bold shadow-xs transition-colors shrink-0 flex items-center justify-center space-x-2 cursor-pointer"
                   >
                     <span>Search Jobs</span>
                     <ArrowRight className="w-4 h-4" />
@@ -441,10 +535,8 @@ export function App() {
                   {['Python & Django', 'React & Full Stack', 'MySQL & Backend', 'SAP MM/SD', 'AI & Machine Learning', 'Remote Jobs'].map((skill) => (
                     <button
                       key={skill}
-                      onClick={() => {
-                        setSearchQuery(skill.split(' ')[0]);
-                      }}
-                      className="px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white font-geometric-mono text-[11px] font-medium transition-colors border border-white/10"
+                      onClick={() => handleQuickFilter(skill)}
+                      className="px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white font-geometric-mono text-[11px] font-medium transition-colors border border-white/10 cursor-pointer"
                     >
                       {skill}
                     </button>
@@ -480,7 +572,7 @@ export function App() {
             </div>
 
             {/* MAIN JOB SEARCH & FILTER LAYOUT */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div id="job-listings-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 {/* Left Filter Sidebar (3 cols) */}
                 <div className="lg:col-span-3">
@@ -505,23 +597,130 @@ export function App() {
                 </div>
 
                 {/* Right Job Cards List (9 cols) */}
-                <div className="lg:col-span-9 space-y-6">
+                <div className="lg:col-span-9 space-y-4">
                   {/* Filter Status Bar */}
                   <div className="bg-white rounded-xl border border-[#E2E8F0] p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="text-xs text-[#64748B]">
-                      Showing <strong className="text-[#0F172A] font-geometric-mono">{filteredJobs.length}</strong> matching verified opportunities
+                      Showing <strong className="text-[#0F172A] font-geometric-mono">{filteredJobs.length}</strong> {filteredJobs.length === 1 ? 'matching verified opportunity' : 'matching verified opportunities'}
                       {searchQuery && <span> for &ldquo;{searchQuery}&rdquo;</span>}
+                      {searchLocation && <span> in &ldquo;{searchLocation}&rdquo;</span>}
                     </div>
 
                     <div className="flex items-center space-x-2 text-xs">
                       <span className="text-[#64748B] font-medium">Sort by:</span>
-                      <select className="bg-slate-50 border border-[#E2E8F0] rounded-lg p-1.5 text-xs font-bold text-[#0F172A]">
-                        <option>Most Relevant</option>
-                        <option>Highest Salary</option>
-                        <option>Latest Posted</option>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as 'relevant' | 'salary' | 'latest')}
+                        className="bg-slate-50 border border-[#E2E8F0] rounded-lg p-1.5 text-xs font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                      >
+                        <option value="relevant">Most Relevant</option>
+                        <option value="salary">Highest Salary</option>
+                        <option value="latest">Latest Posted</option>
                       </select>
                     </div>
                   </div>
+
+                  {/* Active Filter Chips */}
+                  {(searchQuery || searchLocation || filters.category !== 'All' || filters.workMode !== 'All' || filters.employmentType !== 'All' || filters.experienceLevel !== 'All' || filters.salaryMin > 0 || filters.verifiedOnly) && (
+                    <div className="flex flex-wrap items-center gap-1.5 p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-xs">
+                      <span className="text-[11px] font-bold text-blue-900 mr-1 flex items-center space-x-1">
+                        <Filter className="w-3 h-3 text-[#2563EB]" />
+                        <span>Active Filters:</span>
+                      </span>
+
+                      {searchQuery && (
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                          <span>Keyword: &ldquo;{searchQuery}&rdquo;</span>
+                          <button onClick={() => setSearchQuery('')} className="hover:text-rose-600 ml-1">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+
+                      {searchLocation && (
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                          <span>Location: &ldquo;{searchLocation}&rdquo;</span>
+                          <button onClick={() => setSearchLocation('')} className="hover:text-rose-600 ml-1">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+
+                      {filters.category !== 'All' && (
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                          <span>Category: {filters.category}</span>
+                          <button onClick={() => setFilters(f => ({ ...f, category: 'All' }))} className="hover:text-rose-600 ml-1">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+
+                      {filters.workMode !== 'All' && (
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                          <span>Work Mode: {filters.workMode}</span>
+                          <button onClick={() => setFilters(f => ({ ...f, workMode: 'All' }))} className="hover:text-rose-600 ml-1">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+
+                      {filters.employmentType !== 'All' && (
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                          <span>Type: {filters.employmentType}</span>
+                          <button onClick={() => setFilters(f => ({ ...f, employmentType: 'All' }))} className="hover:text-rose-600 ml-1">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+
+                      {filters.experienceLevel !== 'All' && (
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                          <span>Exp: {filters.experienceLevel}</span>
+                          <button onClick={() => setFilters(f => ({ ...f, experienceLevel: 'All' }))} className="hover:text-rose-600 ml-1">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+
+                      {filters.salaryMin > 0 && (
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                          <span>Min ₹{filters.salaryMin} LPA</span>
+                          <button onClick={() => setFilters(f => ({ ...f, salaryMin: 0 }))} className="hover:text-rose-600 ml-1">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+
+                      {filters.verifiedOnly && (
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                          <span>Verified Companies Only</span>
+                          <button onClick={() => setFilters(f => ({ ...f, verifiedOnly: false }))} className="hover:text-rose-600 ml-1">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setSearchQuery('');
+                          setSearchLocation('');
+                          setFilters({
+                            category: 'All',
+                            workMode: 'All',
+                            employmentType: 'All',
+                            experienceLevel: 'All',
+                            salaryMin: 0,
+                            salaryMax: 40,
+                            verifiedOnly: false,
+                          });
+                        }}
+                        className="text-[11px] font-bold text-[#2563EB] hover:text-[#1D4ED8] hover:underline ml-auto flex items-center space-x-1"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Clear All</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Empty state or Job Cards */}
                   {filteredJobs.length === 0 ? (
@@ -712,6 +911,37 @@ export function App() {
           }
         }}
       />
+
+      {/* SYSTEM TEST RUNNER MODAL */}
+      <SystemTestRunnerModal
+        isOpen={testRunnerOpen}
+        onClose={() => setTestRunnerOpen(false)}
+        jobs={jobs}
+        applications={applications}
+        currentUser={currentUser}
+        onApplyTestJob={async (job) => {
+          await handleApply(job);
+          return true;
+        }}
+        onTestFilterSearch={(q, l) => {
+          setSearchQuery(q);
+          setSearchLocation(l);
+          return filteredJobs.length;
+        }}
+      />
+
+      {/* FLOATING QA SYSTEM TEST SUITE BUTTON */}
+      <button
+        onClick={() => setTestRunnerOpen(true)}
+        className="fixed bottom-6 left-6 z-40 px-3.5 py-2.5 bg-[#0F172A] hover:bg-[#2563EB] text-white text-xs font-bold rounded-xl shadow-xl border border-slate-700/80 flex items-center space-x-2 transition-all hover:scale-105 cursor-pointer group"
+        title="Open End-to-End System Test Suite to verify all search & application workflows"
+      >
+        <ShieldCheck className="w-4 h-4 text-emerald-400 group-hover:text-white transition-colors" />
+        <span>System Test Suite</span>
+        <span className="px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-200 text-[10px] font-geometric-mono">
+          11 Tests
+        </span>
+      </button>
 
       {/* Global Footer */}
       <Footer onNavigate={setActiveTab} />
