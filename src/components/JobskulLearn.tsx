@@ -110,7 +110,7 @@ export const JobskulLearn: React.FC<JobskulLearnProps> = ({
             </p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 text-center min-w-[220px]">
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 text-center w-full md:w-auto md:min-w-[220px]">
             <p className="text-xs font-semibold text-blue-200">Track Progress</p>
             <p className="text-2xl font-black text-amber-300 mt-0.5">{currentPercentage}% Done</p>
             <p className="text-[11px] text-blue-200 mt-1">{completedTaskIndices.length} of {selectedProject.tasksCount} Tasks Finished</p>

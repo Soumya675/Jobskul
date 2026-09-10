@@ -1,6 +1,6 @@
 {
   "name": "Jobskül - Hire • Train • Deploy",
-  "description": "Comprehensive career and talent ecosystem featuring advanced job search, AI job matching, ATS resume builder, project-based learning, recruitment tracking, and recruiter dashboards.",
+  "description": "Comprehensive career and talent ecosystem featuring verified job listings, ATS resume builder, project-based apprenticeship learning, corporate recruitment tracking, and enterprise hiring dashboards.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

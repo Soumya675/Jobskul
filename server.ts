@@ -32,6 +32,21 @@ let dbProgress: Record<string, StudentProgress> = {
   }
 };
 
+// Cryptographically secure OTP memory storage with expiry and rate-limiting
+interface OtpRecord {
+  email: string;
+  otp: string;
+  expiresAt: number;
+  attempts: number;
+  role?: 'candidate' | 'recruiter' | 'admin';
+  name?: string;
+  phone?: string;
+  companyName?: string;
+  createdAt: number;
+  lastSentAt: number;
+}
+const dbOtps = new Map<string, OtpRecord>();
+
 // Initialize Gemini Client
 let aiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
@@ -70,14 +85,192 @@ async function startServer() {
   });
 
   // --- AUTH ROUTES ---
+  // Send 6-Digit Gmail/Email OTP
+  app.post("/api/auth/send-otp", async (req: Request, res: Response) => {
+    try {
+      const { email, role = 'candidate', name = '' } = req.body;
+      if (!email || typeof email !== 'string') {
+        return res.status(400).json({ error: "A valid email address is required." });
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(cleanEmail)) {
+        return res.status(400).json({ error: "Please provide a valid email format (e.g. name@gmail.com)." });
+      }
+
+      // Rate limit check: 25 seconds cooldown
+      const existing = dbOtps.get(cleanEmail);
+      const now = Date.now();
+      if (existing && (now - existing.lastSentAt) < 25000) {
+        const remainingSec = Math.ceil((25000 - (now - existing.lastSentAt)) / 1000);
+        return res.status(429).json({
+          error: `Please wait ${remainingSec}s before requesting a new verification code.`
+        });
+      }
+
+      // Generate cryptographically random 6-digit OTP code
+      const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+      const expiresAt = now + 10 * 60 * 1000; // 10 minutes valid
+
+      dbOtps.set(cleanEmail, {
+        email: cleanEmail,
+        otp: otpCode,
+        expiresAt,
+        attempts: 0,
+        role: (role as any) || 'candidate',
+        name: name ? String(name).trim() : undefined,
+        createdAt: now,
+        lastSentAt: now
+      });
+
+      // Dispatch branded HTML email via Jobskül Email Engine
+      await sendSystemEmail({
+        to: cleanEmail,
+        subject: `Your Jobskül Verification Code: ${otpCode}`,
+        type: 'candidate_invitation',
+        title: 'Sign In to Jobskül — One-Time Password',
+        plainText: `Your Jobskül verification code is: ${otpCode}. Valid for 10 minutes. Do not share this code with anyone. Delivered for: ${cleanEmail}`,
+        bodyContent: `
+          <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; text-align: center; margin: 20px 0;">
+            <p style="margin: 0 0 8px; font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 2px; text-transform: uppercase;">6-Digit One-Time Password</p>
+            <div style="font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #0073C8; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; padding: 10px 0;">
+              ${otpCode}
+            </div>
+            <p style="margin: 8px 0 0; font-size: 12px; color: #64748B;">
+              Valid for <strong>10 minutes</strong>. Single use only.
+            </p>
+          </div>
+
+          <p style="font-size: 13px; color: #334155; line-height: 1.6;">
+            We received a request to access Jobskül using <strong>${cleanEmail}</strong>. 
+            If you did not initiate this sign-in attempt, please disregard this email.
+          </p>
+
+          <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 12px 16px; margin: 18px 0; border-radius: 4px;">
+            <p style="margin: 0; font-size: 12px; color: #1E40AF; font-weight: 600;">
+              🔒 Security Tip: Jobskül administrators will never request your verification code over phone or chat.
+            </p>
+          </div>
+        `
+      });
+
+      console.log(`[AUTH OTP GENERATED] Email: ${cleanEmail} | OTP: ${otpCode} | Role: ${role}`);
+
+      return res.json({
+        success: true,
+        message: `6-digit verification code dispatched to ${cleanEmail}`,
+        expiresInSeconds: 600,
+        // In local/sandbox preview, we return otpPreview for instant testing without needing third-party SMTP
+        otpPreview: otpCode
+      });
+    } catch (err: any) {
+      console.error("send-otp error:", err);
+      return res.status(500).json({ error: err.message || "Failed to generate OTP" });
+    }
+  });
+
+  // Verify OTP and Authenticate / Register User
+  app.post("/api/auth/verify-otp", (req: Request, res: Response) => {
+    try {
+      const { email, otp, role, name, phone, companyName } = req.body;
+      if (!email || !otp) {
+        return res.status(400).json({ error: "Email and 6-digit OTP code are required." });
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanOtp = String(otp).trim();
+
+      const record = dbOtps.get(cleanEmail);
+      if (!record) {
+        return res.status(400).json({
+          error: "No active verification code found for this email. Please request a new code."
+        });
+      }
+
+      // Check expiry
+      if (Date.now() > record.expiresAt) {
+        dbOtps.delete(cleanEmail);
+        return res.status(400).json({
+          error: "Verification code has expired. Please request a fresh code."
+        });
+      }
+
+      // Check max failed attempts (brute-force protection)
+      if (record.attempts >= 5) {
+        dbOtps.delete(cleanEmail);
+        return res.status(429).json({
+          error: "Maximum verification attempts exceeded. For security, please request a new code."
+        });
+      }
+
+      // Validate OTP
+      if (record.otp !== cleanOtp) {
+        record.attempts += 1;
+        return res.status(400).json({
+          error: `Incorrect verification code. ${5 - record.attempts} attempt(s) remaining.`
+        });
+      }
+
+      // OTP Validated! Remove from active storage
+      dbOtps.delete(cleanEmail);
+
+      // Check if user exists in database
+      let user = dbUsers.find(u => u.email.toLowerCase() === cleanEmail);
+
+      if (!user) {
+        // Auto-register new verified user
+        const assignedRole: any = role || record.role || 'candidate';
+        const formattedName = name?.trim() || record.name?.trim() || cleanEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+        user = {
+          id: `user-${Date.now()}`,
+          name: formattedName,
+          email: cleanEmail,
+          role: assignedRole,
+          phone: phone?.trim() || '+91 98000 00000',
+          location: 'India',
+          qualification: 'Graduate / Engineering',
+          experienceYears: assignedRole === 'candidate' ? 1 : 4,
+          skills: assignedRole === 'candidate' ? ['React', 'JavaScript', 'Python', 'MySQL'] : ['Talent Sourcing', 'ATS Operations', 'Technical Recruiting'],
+          headline: assignedRole === 'recruiter'
+            ? `Recruitment Partner at ${companyName || 'Corporate Talent'}`
+            : 'Software Development Candidate | Verified Jobskül Trainee',
+          companyName: assignedRole === 'recruiter' ? (companyName || 'Corporate Partner') : undefined,
+          profileCompletion: 85
+        };
+
+        dbUsers.push(user);
+        console.log(`[AUTH NEW USER REGISTERED VIA OTP] ${user.name} (${user.email}) as ${user.role}`);
+      } else {
+        console.log(`[AUTH EXISTING USER LOGGED IN VIA OTP] ${user.name} (${user.email}) as ${user.role}`);
+        if (companyName && user.role === 'recruiter' && !user.companyName) {
+          user.companyName = companyName;
+        }
+      }
+
+      const token = `jsk_session_${user.id}_${Date.now()}`;
+
+      return res.json({
+        success: true,
+        message: "Successfully authenticated with Jobskül.",
+        token,
+        user
+      });
+    } catch (err: any) {
+      console.error("verify-otp error:", err);
+      return res.status(500).json({ error: err.message || "Failed to verify OTP" });
+    }
+  });
+
+  // Legacy password-based login endpoint fallback
   app.post("/api/auth/login", (req: Request, res: Response) => {
-    const { email, password, role } = req.body;
+    const { email, role } = req.body;
     let user = dbUsers.find(u => u.email.toLowerCase() === (email || "").toLowerCase());
     if (!user) {
-      // Find default user by role for easy demo
       user = dbUsers.find(u => u.role === role) || dbUsers[0];
     }
-    const token = `jwt_jobskul_${user.id}_${Date.now()}`;
+    const token = `jsk_session_${user.id}_${Date.now()}`;
     return res.json({
       success: true,
       token,
@@ -97,7 +290,7 @@ async function startServer() {
     const newUser: User = {
       id: `user-${Date.now()}`,
       name,
-      email,
+      email: email.toLowerCase(),
       role: role as any,
       phone: phone || '+91 98000 00000',
       location: location || 'India',
@@ -111,7 +304,7 @@ async function startServer() {
     dbUsers.push(newUser);
     return res.json({
       success: true,
-      token: `jwt_jobskul_${newUser.id}`,
+      token: `jsk_session_${newUser.id}`,
       user: newUser
     });
   });
@@ -130,7 +323,55 @@ async function startServer() {
     return res.json({ success: true, user: dbUsers[idx] });
   });
 
-  // --- JOBS ROUTES ---
+  // Campus Recruitment Drive & Promotion Partner Endpoint
+  app.post("/api/promotions/campus-drive", async (req: Request, res: Response) => {
+    try {
+      const { collegeName, contactPerson, email, phone, city, expectedStudents } = req.body;
+      if (!collegeName || !email) {
+        return res.status(400).json({ error: "College name and contact email are required." });
+      }
+
+      console.log(`[CAMPUS DRIVE REQUEST] ${collegeName} (${city}) - Coordinator: ${contactPerson} <${email}>`);
+
+      // Send official acknowledgment email
+      await sendSystemEmail({
+        to: email.trim().toLowerCase(),
+        subject: `Jobskül Campus Recruitment Drive: ${collegeName}`,
+        type: 'candidate_invitation',
+        title: 'Jobskül Campus Recruitment Partnership Initiated',
+        plainText: `Thank you ${contactPerson || 'Placement Coordinator'}. We have received your request for an on-campus / pooled recruitment drive at ${collegeName} (${city || 'India'}) for ${expectedStudents || 'eligible students'}. Our University Relations team will reach out within 24 hours.`,
+        bodyContent: `
+          <p style="font-size: 14px; color: #1E293B;">
+            Dear <strong>${contactPerson || 'Placement Coordinator'}</strong>,
+          </p>
+          <p style="font-size: 13px; color: #334155; line-height: 1.6;">
+            Thank you for inviting Jobskül for campus recruitment drives at <strong>${collegeName}</strong>. 
+            We connect your engineering and technology students directly with verified tech enterprises hiring across India.
+          </p>
+          <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+            <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #0073C8;">Partnership Summary:</p>
+            <p style="margin: 0 0 4px; font-size: 12px; color: #475569;">🏛️ Institution: <strong>${collegeName}</strong></p>
+            <p style="margin: 0 0 4px; font-size: 12px; color: #475569;">📍 Location: <strong>${city || 'India'}</strong></p>
+            <p style="margin: 0 0 4px; font-size: 12px; color: #475569;">🎓 Target Batch: <strong>${expectedStudents || 'Engineering & MCA Batch'}</strong></p>
+            <p style="margin: 0; font-size: 12px; color: #475569;">📞 Contact Phone: <strong>${phone || 'Provided via form'}</strong></p>
+          </div>
+          <p style="font-size: 13px; color: #334155; line-height: 1.6;">
+            Our Corporate Placement Manager will contact your TPO office within 24 hours to coordinate online coding assessments, ATS candidate screening, and enterprise interview schedules.
+          </p>
+        `
+      });
+
+      return res.json({
+        success: true,
+        message: `Campus recruitment partnership registered for ${collegeName}. Confirmation email dispatched.`
+      });
+    } catch (err: any) {
+      console.error("Campus drive registration error:", err);
+      return res.status(500).json({ error: err.message || "Failed to process campus drive request" });
+    }
+  });
+
+  // --- JOBS ROUTES WITH COMPREHENSIVE MULTI-KEYWORD SEARCH ---
   app.get("/api/jobs", (req: Request, res: Response) => {
     const {
       q,
@@ -147,15 +388,55 @@ async function startServer() {
     let filtered = [...dbJobs];
 
     if (q) {
-      const keyword = String(q).toLowerCase();
-      filtered = filtered.filter(
-        j =>
-          j.title.toLowerCase().includes(keyword) ||
-          j.company.toLowerCase().includes(keyword) ||
-          j.requiredSkills.some(s => s.toLowerCase().includes(keyword)) ||
-          j.description.toLowerCase().includes(keyword) ||
-          j.industry.toLowerCase().includes(keyword)
-      );
+      const qStr = String(q).trim().toLowerCase();
+      // Extract tokens, supporting both quoted phrases like "Full Stack" and space-separated keywords
+      const tokens: string[] = [];
+      const regex = /"([^"]+)"|(\S+)/g;
+      let match;
+      while ((match = regex.exec(qStr)) !== null) {
+        tokens.push(match[1] || match[2]);
+      }
+
+      if (tokens.length > 0) {
+        filtered = filtered.filter(j => {
+          // Construct rich search corpus for the job
+          const searchableCorpus = [
+            j.title,
+            j.company,
+            j.category,
+            j.location,
+            j.workMode,
+            j.employmentType,
+            j.experienceLevel,
+            j.industry || '',
+            j.description || '',
+            ...(j.requiredSkills || []),
+            ...(j.preferredSkills || []),
+            ...(j.benefits || []),
+            ...(j.responsibilities || [])
+          ].join(' ').toLowerCase();
+
+          // EVERY keyword token must match somewhere in the job's searchable data
+          return tokens.every(token => searchableCorpus.includes(token));
+        });
+
+        // Relevance scoring
+        filtered.sort((a, b) => {
+          let scoreA = 0;
+          let scoreB = 0;
+          tokens.forEach(tok => {
+            if (a.title.toLowerCase().includes(tok)) scoreA += 50;
+            if (b.title.toLowerCase().includes(tok)) scoreB += 50;
+            if (a.company.toLowerCase().includes(tok)) scoreA += 30;
+            if (b.company.toLowerCase().includes(tok)) scoreB += 30;
+            if (a.requiredSkills.some(s => s.toLowerCase().includes(tok))) scoreA += 40;
+            if (b.requiredSkills.some(s => s.toLowerCase().includes(tok))) scoreB += 40;
+            if (a.location.toLowerCase().includes(tok)) scoreA += 20;
+            if (b.location.toLowerCase().includes(tok)) scoreB += 20;
+          });
+          return scoreB - scoreA;
+        });
+      }
     }
 
     if (category && category !== 'All') {

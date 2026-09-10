@@ -3,7 +3,8 @@ import { User } from '../types';
 import {
   FileText,
   Printer,
-  Sparkles,
+  ShieldCheck,
+  Lightbulb,
   CheckCircle2,
   AlertCircle,
   Download,
@@ -120,7 +121,7 @@ export const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
           </div>
           <h1 className="text-2xl font-black text-slate-900 mt-1">Jobskül ATS Resume Builder</h1>
           <p className="text-xs text-slate-600 mt-0.5">
-            Create high-scoring, ATS-compliant resumes with real-time scoring and AI suggestions.
+            Create high-scoring, ATS-compliant resumes with real-time scoring and recruitment keyword verification.
           </p>
         </div>
 
@@ -171,7 +172,7 @@ export const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
           <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center space-x-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
+                <ShieldCheck className="w-4 h-4 text-blue-600" />
                 <h3 className="text-sm font-bold text-slate-900">ATS Resume Score</h3>
               </div>
               <button
@@ -227,9 +228,9 @@ export const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
               </div>
             </div>
 
-            {/* AI Suggestion */}
+            {/* Keyword Parser Recommendation */}
             <div className="p-3 bg-blue-50 rounded-lg text-xs text-blue-900 border border-blue-100 flex items-start space-x-2">
-              <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+              <Lightbulb className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
               <span>{analysisResult.aiSuggestions}</span>
             </div>
           </div>

@@ -28,8 +28,8 @@ export interface User {
   profileCompletion?: number;
 }
 
-export type EmploymentType = 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
-export type WorkMode = 'Remote' | 'Hybrid' | 'Work from office';
+export type EmploymentType = 'Full-time' | 'Part-time' | 'Contract' | 'Internship' | 'Traineeship';
+export type WorkMode = 'Remote' | 'Hybrid' | 'Work from office' | 'On-site';
 export type ExperienceLevel = 'Fresher' | '1-3 Years' | '3-5 Years' | '5-8 Years' | '8+ Years';
 
 export interface JobListing {
@@ -236,14 +236,59 @@ export interface JobAlert {
   createdAt: string;
 }
 
+export type JobCategory =
+  | 'Marketing & Sales'
+  | 'Software'
+  | 'Retail & Products'
+  | 'Human Resource'
+  | 'Finance'
+  | 'Management'
+  | 'Customer Help'
+  | 'Market Research'
+  | string;
+
+export type BlogCategory =
+  | 'General Career Tips'
+  | 'Career Tips'
+  | 'Industry News'
+  | 'HR Insights'
+  | 'Career Advice'
+  | 'Interview Preparation'
+  | 'Skill Development'
+  | string;
+
 export interface CareerArticle {
   id: string;
   title: string;
-  category: 'Interview Tips' | 'Resume Tips' | 'Career Guidance' | 'Skill Trends' | 'Fresher Guide';
+  category: BlogCategory;
   author: string;
   readTime: string;
   date: string;
   summary: string;
   content: string;
   tags: string[];
+  coverImage?: string;
+}
+
+export interface ServiceEnquiry {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  organization: string;
+  audience: 'Corporate' | 'Institution' | 'Individual';
+  serviceName: string;
+  message: string;
+  createdAt: string;
+  status: 'new' | 'contacted' | 'resolved';
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  createdAt: string;
 }

@@ -10,7 +10,7 @@ import {
   Globe,
   Github,
   Linkedin,
-  Sparkles,
+  Wrench,
   Save,
   CheckCircle2,
   Plus,
@@ -104,7 +104,7 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ user, onUpda
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center min-w-[140px]">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center w-full sm:w-auto sm:min-w-[140px]">
           <span className="text-[10px] font-bold text-blue-800 uppercase">Profile Strength</span>
           <p className="text-2xl font-black text-blue-700 mt-0.5">95%</p>
           <span className="text-[10px] font-semibold text-emerald-600 flex items-center justify-center space-x-1 mt-0.5">
@@ -191,7 +191,7 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ user, onUpda
         {/* Skills Matrix */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-2 flex items-center space-x-2">
-            <Sparkles className="w-4 h-4 text-blue-600" />
+            <Wrench className="w-4 h-4 text-blue-600" />
             <span>Key Skills & Technical Competencies</span>
           </h2>
 

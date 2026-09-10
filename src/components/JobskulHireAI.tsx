@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, JobListing } from '../types';
 import {
-  Sparkles,
+  ShieldCheck,
   Target,
   FileText,
   MessageSquare,
@@ -163,25 +163,25 @@ export const JobskulHireAI: React.FC<JobskulHireAIProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Hero Header */}
-      <div className="bg-linear-to-r from-slate-900 via-blue-950 to-indigo-950 rounded-2xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden">
+      <div className="bg-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden border border-slate-800">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Jobskül HireAI • Career Intelligence Engine</span>
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-xs font-bold uppercase tracking-wider">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+              <span>Jobskül Placement & Competency Framework</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              AI Job Matcher, ATS Scanner & Interview Prep
+              Career Assessment & Placement Preparation
             </h1>
-            <p className="text-blue-200 text-xs sm:text-sm max-w-2xl leading-relaxed">
-              Elevate your hiring journey. Bridge skill gaps, optimize your resume for applicant tracking systems (ATS), generate tailored cover letters, and master technical interview questions.
+            <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed font-normal">
+              Objective role compatibility evaluation, candidate skill gap analysis, recruiter-aligned cover letter formatting, and structured technical interview readiness.
             </p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 text-center min-w-[200px]">
-            <span className="text-[10px] font-bold uppercase text-blue-200">Powered by</span>
-            <p className="text-lg font-black text-amber-300 mt-0.5">Gemini 2.5 Flash</p>
-            <p className="text-[10px] text-blue-200 mt-1">High-Precision Career AI</p>
+          <div className="bg-slate-800/90 rounded-xl p-4 border border-slate-700/80 text-center w-full md:w-auto md:min-w-[200px]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Evaluation Matrix</span>
+            <p className="text-lg font-black text-white mt-0.5 font-geometric-mono">ATS & Role Standard</p>
+            <p className="text-[10px] text-blue-300 mt-1">Industry Benchmarked Criteria</p>
           </div>
         </div>
       </div>
@@ -197,7 +197,7 @@ export const JobskulHireAI: React.FC<JobskulHireAIProps> = ({
           }`}
         >
           <Target className="w-4 h-4" />
-          <span>1. AI Job Match & Skill Gap</span>
+          <span>1. Profile & Role Fit Analysis</span>
         </button>
 
         <button
@@ -209,7 +209,7 @@ export const JobskulHireAI: React.FC<JobskulHireAIProps> = ({
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span>2. Tailored Cover Letter</span>
+          <span>2. Custom Cover Letter</span>
         </button>
 
         <button
@@ -221,7 +221,7 @@ export const JobskulHireAI: React.FC<JobskulHireAIProps> = ({
           }`}
         >
           <MessageSquare className="w-4 h-4" />
-          <span>3. Mock Interview Prep</span>
+          <span>3. Technical Interview Prep</span>
         </button>
       </div>
 
@@ -259,10 +259,10 @@ export const JobskulHireAI: React.FC<JobskulHireAIProps> = ({
             <button
               onClick={handleRunMatch}
               disabled={matchLoading}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs flex items-center justify-center space-x-2 transition-colors disabled:opacity-50"
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs flex items-center justify-center space-x-2 transition-colors disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw className={`w-4 h-4 ${matchLoading ? 'animate-spin' : ''}`} />
-              <span>{matchLoading ? 'Analyzing Alignment...' : 'Calculate AI Match Score'}</span>
+              <span>{matchLoading ? 'Analyzing Alignment...' : 'Evaluate Role Fit & Gap Analysis'}</span>
             </button>
           </div>
 
@@ -336,7 +336,7 @@ export const JobskulHireAI: React.FC<JobskulHireAIProps> = ({
               <div className="pt-2">
                 <button
                   onClick={onNavigateToLearn}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs flex items-center space-x-2 transition-colors"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs flex items-center space-x-2 transition-colors cursor-pointer"
                 >
                   <BookOpen className="w-4 h-4" />
                   <span>Enroll in Jobskül Project Tracks to Bridge Gaps</span>
@@ -385,10 +385,10 @@ export const JobskulHireAI: React.FC<JobskulHireAIProps> = ({
               <button
                 onClick={handleGenerateCoverLetter}
                 disabled={clLoading}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-xs flex items-center justify-center space-x-2 transition-colors disabled:opacity-50"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-xs flex items-center justify-center space-x-2 transition-colors disabled:opacity-50 cursor-pointer"
               >
-                <Sparkles className={`w-4 h-4 ${clLoading ? 'animate-spin' : ''}`} />
-                <span>{clLoading ? 'Crafting Letter...' : 'Generate Custom Cover Letter'}</span>
+                <FileText className={`w-4 h-4 ${clLoading ? 'animate-spin' : ''}`} />
+                <span>{clLoading ? 'Crafting Letter...' : 'Generate Tailored Cover Letter'}</span>
               </button>
             </div>
           </div>
@@ -398,7 +398,7 @@ export const JobskulHireAI: React.FC<JobskulHireAIProps> = ({
               <h4 className="font-bold text-slate-900 text-sm">Tailored Professional Cover Letter</h4>
               <button
                 onClick={handleCopyLetter}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors cursor-pointer"
               >
                 {clCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{clCopied ? 'Copied to Clipboard!' : 'Copy Text'}</span>
@@ -432,10 +432,10 @@ export const JobskulHireAI: React.FC<JobskulHireAIProps> = ({
             <button
               onClick={handleGenerateInterviewPrep}
               disabled={prepLoading}
-              className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs flex items-center justify-center space-x-2 transition-colors disabled:opacity-50 self-end"
+              className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs flex items-center justify-center space-x-2 transition-colors disabled:opacity-50 self-end cursor-pointer"
             >
-              <Sparkles className={`w-4 h-4 ${prepLoading ? 'animate-spin' : ''}`} />
-              <span>{prepLoading ? 'Generating Questions...' : 'Generate Mock Interview Prep'}</span>
+              <MessageSquare className={`w-4 h-4 ${prepLoading ? 'animate-spin' : ''}`} />
+              <span>{prepLoading ? 'Structuring Questions...' : 'Generate Mock Interview Questions'}</span>
             </button>
           </div>
 

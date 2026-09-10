@@ -34,7 +34,7 @@ export const Logo: React.FC<LogoProps> = ({
 
   return (
     <div
-      className={`inline-flex items-center select-none cursor-pointer transition-transform hover:opacity-95 active:scale-98 ${className}`}
+      className={`inline-flex items-center select-none cursor-pointer transition-transform hover:opacity-95 active:scale-98 max-w-full shrink-0 ${className}`}
       style={{ height: targetDim.height }}
       title="Jobskül - Hire • Train • Deploy"
       role="img"
@@ -45,7 +45,7 @@ export const Logo: React.FC<LogoProps> = ({
           src={imageSrc}
           alt="Jobskül - Hire • Train • Deploy"
           style={{ height: targetDim.height, width: 'auto', objectFit: 'contain' }}
-          className="h-full w-auto max-w-none block"
+          className="h-full w-auto max-h-full max-w-full block object-contain"
           onError={() => setImageError(true)}
           referrerPolicy="no-referrer"
         />
@@ -53,7 +53,8 @@ export const Logo: React.FC<LogoProps> = ({
         /* Vector fallback if image fails to load */
         <svg
           viewBox="0 0 780 260"
-          style={{ height: targetDim.height, width: targetDim.width }}
+          style={{ height: targetDim.height, width: 'auto', maxWidth: '100%' }}
+          className="h-full w-auto max-w-full"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >

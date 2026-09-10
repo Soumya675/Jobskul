@@ -6,7 +6,7 @@ import {
   UserCheck,
   Calendar,
   PlusCircle,
-  Sparkles,
+  Wand2,
   Search,
   Filter,
   CheckCircle2,
@@ -508,7 +508,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
 
                         <td className="p-4">
                           <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            <Sparkles className="w-3 h-3 text-emerald-600" />
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                             <span>{app.aiMatchScore || 88}%</span>
                           </span>
                         </td>
@@ -660,10 +660,10 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
               type="button"
               onClick={handleAiGenerateJob}
               disabled={isAiGenerating}
-              className="px-4 py-2 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center space-x-1.5 transition-all disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center space-x-1.5 transition-all disabled:opacity-50 cursor-pointer"
             >
-              <Sparkles className={`w-4 h-4 ${isAiGenerating ? 'animate-spin' : ''}`} />
-              <span>{isAiGenerating ? 'Generating JD with AI...' : 'Generate JD with Gemini AI'}</span>
+              <Wand2 className={`w-4 h-4 ${isAiGenerating ? 'animate-spin' : ''}`} />
+              <span>{isAiGenerating ? 'Drafting JD Requirements...' : 'Auto-Draft Requirements'}</span>
             </button>
           </div>
 
@@ -832,7 +832,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
           {/* Live Test Mailer Console */}
           <div className="bg-linear-to-r from-blue-900 to-indigo-950 text-white rounded-2xl p-6 shadow-md border border-blue-800 space-y-4">
             <div className="flex items-center space-x-2">
-              <Sparkles className="w-4 h-4 text-blue-300" />
+              <Mail className="w-4 h-4 text-blue-300" />
               <h3 className="font-bold text-sm text-white">Live Email Dispatch Verifier</h3>
               <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold uppercase">
                 Active Mailer Ready

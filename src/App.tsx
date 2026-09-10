@@ -16,6 +16,13 @@ import { CareerBlog } from './components/CareerBlog';
 import { AdminPanel } from './components/AdminPanel';
 import { AuthModal } from './components/AuthModal';
 import { SystemTestRunnerModal } from './components/SystemTestRunnerModal';
+import { OurTeam } from './components/OurTeam';
+import { FAQSection } from './components/FAQSection';
+import { GallerySection } from './components/GallerySection';
+import { ContactSection } from './components/ContactSection';
+import { CandidatesDirectory } from './components/CandidatesDirectory';
+import { ResponsiveImage } from './components/ResponsiveImage';
+import { PromotionModal } from './components/PromotionModal';
 
 import {
   INITIAL_JOBS,
@@ -31,7 +38,7 @@ import {
   Search,
   MapPin,
   Briefcase,
-  Sparkles,
+  Code2,
   TrendingUp,
   Building2,
   Users,
@@ -43,7 +50,8 @@ import {
   X,
   RotateCcw,
   SlidersHorizontal,
-  Check
+  Check,
+  Sparkles
 } from 'lucide-react';
 
 export function App() {
@@ -61,6 +69,9 @@ export function App() {
   // Auth modal
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalRole, setAuthModalRole] = useState<UserRole>('candidate');
+
+  // Promotion & Growth modal
+  const [promotionModalOpen, setPromotionModalOpen] = useState(false);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,6 +97,16 @@ export function App() {
 
   // Sync jobs and applications from server if available
   useEffect(() => {
+    try {
+      const savedUser = localStorage.getItem('jobskul_auth_user');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed && parsed.id) {
+          setCurrentUser(parsed);
+        }
+      }
+    } catch (e) {}
+
     fetch('/api/jobs')
       .then(res => res.json())
       .then(data => {
@@ -335,20 +356,38 @@ export function App() {
   // --- FILTERED & SORTED JOBS ---
   const filteredJobs = useMemo(() => {
     const list = jobs.filter(j => {
-      // Keyword search
+      // Multi-keyword Tokenized Search
       if (searchQuery.trim()) {
-        const q = searchQuery.trim().toLowerCase();
-        const matches =
-          j.title.toLowerCase().includes(q) ||
-          j.company.toLowerCase().includes(q) ||
-          j.requiredSkills.some(s => s.toLowerCase().includes(q)) ||
-          (j.preferredSkills && j.preferredSkills.some(s => s.toLowerCase().includes(q))) ||
-          j.description.toLowerCase().includes(q) ||
-          j.category.toLowerCase().includes(q) ||
-          j.workMode.toLowerCase().includes(q) ||
-          j.location.toLowerCase().includes(q) ||
-          (j.industry && j.industry.toLowerCase().includes(q));
-        if (!matches) return false;
+        const qStr = searchQuery.trim().toLowerCase();
+        // Support quoted phrases e.g. "Full Stack" and standalone keywords
+        const tokens: string[] = [];
+        const regex = /"([^"]+)"|(\S+)/g;
+        let match;
+        while ((match = regex.exec(qStr)) !== null) {
+          tokens.push(match[1] || match[2]);
+        }
+
+        if (tokens.length > 0) {
+          const searchableCorpus = [
+            j.title,
+            j.company,
+            j.category,
+            j.location,
+            j.workMode,
+            j.employmentType,
+            j.experienceLevel,
+            j.industry || '',
+            j.description || '',
+            ...(j.requiredSkills || []),
+            ...(j.preferredSkills || []),
+            ...(j.benefits || []),
+            ...(j.responsibilities || [])
+          ].join(' ').toLowerCase();
+
+          // Every token must match somewhere in the corpus
+          const allMatch = tokens.every(token => searchableCorpus.includes(token));
+          if (!allMatch) return false;
+        }
       }
 
       // Location search
@@ -390,13 +429,22 @@ export function App() {
       list.sort((a, b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime());
     } else if (sortBy === 'relevant') {
       if (searchQuery.trim()) {
-        const q = searchQuery.trim().toLowerCase();
+        const qStr = searchQuery.trim().toLowerCase();
+        const tokens = qStr.split(/\s+/).filter(Boolean);
         list.sort((a, b) => {
-          const aTitle = a.title.toLowerCase().includes(q) ? 2 : 0;
-          const bTitle = b.title.toLowerCase().includes(q) ? 2 : 0;
-          const aSkill = a.requiredSkills.some(s => s.toLowerCase().includes(q)) ? 1 : 0;
-          const bSkill = b.requiredSkills.some(s => s.toLowerCase().includes(q)) ? 1 : 0;
-          return (bTitle + bSkill) - (aTitle + aSkill);
+          let scoreA = 0;
+          let scoreB = 0;
+          tokens.forEach(tok => {
+            if (a.title.toLowerCase().includes(tok)) scoreA += 50;
+            if (b.title.toLowerCase().includes(tok)) scoreB += 50;
+            if (a.requiredSkills.some(s => s.toLowerCase().includes(tok))) scoreA += 40;
+            if (b.requiredSkills.some(s => s.toLowerCase().includes(tok))) scoreB += 40;
+            if (a.company.toLowerCase().includes(tok)) scoreA += 30;
+            if (b.company.toLowerCase().includes(tok)) scoreB += 30;
+            if (a.location.toLowerCase().includes(tok)) scoreA += 20;
+            if (b.location.toLowerCase().includes(tok)) scoreB += 20;
+          });
+          return scoreB - scoreA;
         });
       }
     }
@@ -431,8 +479,18 @@ export function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenAuth={(r) => { setAuthModalRole(r || 'candidate'); setAuthModalOpen(true); }}
+        onOpenPromote={() => setPromotionModalOpen(true)}
+        onSearchQueryChange={(query) => {
+          setSearchQuery(query);
+          setActiveTab('jobs');
+        }}
         onSwitchUser={handleSwitchPersona}
-        onLogout={() => { setCurrentUser(null); showToast('Signed out successfully.'); }}
+        onLogout={() => {
+          setCurrentUser(null);
+          localStorage.removeItem('jobskul_auth_user');
+          localStorage.removeItem('jobskul_auth_token');
+          showToast('Signed out successfully.');
+        }}
       />
 
       {/* MAIN CONTENT AREA */}
@@ -440,133 +498,294 @@ export function App() {
         {/* TAB: HOME & FIND JOBS */}
         {(activeTab === 'home' || activeTab === 'jobs') && (
           <div className="space-y-12">
-            {/* HERO SEARCH SECTION - Geometric Balance */}
-            <div className="bg-[#0F172A] text-white py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden border-b border-[#E2E8F0]/20">
+            {/* HERO SEARCH SECTION - Modern Split Hero with Responsive Image */}
+            <div className="bg-slate-900 text-white py-12 sm:py-16 lg:py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden border-b border-slate-800">
               {/* Geometric Grid Pattern Overlay */}
               <div 
-                className="absolute inset-0 opacity-15 pointer-events-none"
+                className="absolute inset-0 opacity-10 pointer-events-none"
                 style={{
                   backgroundImage: `linear-gradient(to right, #94A3B8 1px, transparent 1px), linear-gradient(to bottom, #94A3B8 1px, transparent 1px)`,
                   backgroundSize: '36px 36px'
                 }}
               />
 
-              <div className="max-w-5xl mx-auto text-center space-y-6 relative z-10">
-                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-white/10 backdrop-blur-md border border-white/15 text-blue-200 text-xs font-geometric-mono font-semibold tracking-wider">
-                  <span>Hire</span>
-                  <span>•</span>
-                  <span>Train</span>
-                  <span>•</span>
-                  <span>Deploy</span>
-                  <span className="ml-1 text-amber-300 font-bold">★ Career Ecosystem</span>
+              <div className="max-w-7xl mx-auto relative z-10">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+                  {/* Left Column: Copy & Search (7 cols) */}
+                  <div className="lg:col-span-7 space-y-6 text-left">
+                    <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-800/90 border border-slate-700/80 text-blue-200 text-xs font-geometric-mono font-semibold tracking-wider shadow-sm">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Hire</span>
+                      <span className="text-slate-500">•</span>
+                      <span>Train</span>
+                      <span className="text-slate-500">•</span>
+                      <span>Deploy</span>
+                      <span className="ml-1 text-slate-300 font-medium">| Corporate Staffing & Placement</span>
+                    </div>
+
+                    <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1]">
+                      Learn. Build. Showcase. <br className="hidden sm:inline" />
+                      <span className="text-blue-400">
+                        Get Hired.
+                      </span>
+                    </h1>
+
+                    <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-xl font-normal">
+                      India&apos;s premier project-verified career ecosystem. Connecting engineering and business talent with verified enterprise hiring teams, validated competency benchmarks, and direct corporate placement.
+                    </p>
+
+                    {/* Main Search Bar Box */}
+                    <div className="bg-white rounded-2xl p-2 sm:p-2.5 shadow-2xl shadow-slate-950/25 flex flex-col md:flex-row items-center gap-2 border border-slate-200/80 text-slate-900">
+                      <div className="relative flex-1 w-full flex items-center pl-3">
+                        <Search className="w-5 h-5 text-slate-400 shrink-0" />
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSearchSubmit();
+                          }}
+                          placeholder="Job title, skill (Python, React, MySQL)..."
+                          className="w-full p-2.5 text-xs sm:text-sm bg-transparent focus:outline-none text-slate-900 placeholder-slate-400 font-medium"
+                        />
+                        {searchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchQuery('')}
+                            className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 mr-2 shrink-0 transition-colors cursor-pointer"
+                            title="Clear search query"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="hidden md:block w-px h-8 bg-slate-200" />
+
+                      <div className="relative flex-1 w-full flex items-center pl-3">
+                        <MapPin className="w-5 h-5 text-slate-400 shrink-0" />
+                        <input
+                          type="text"
+                          value={searchLocation}
+                          onChange={(e) => setSearchLocation(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSearchSubmit();
+                          }}
+                          placeholder="Location (Bengaluru, Pune, Remote)..."
+                          className="w-full p-2.5 text-xs sm:text-sm bg-transparent focus:outline-none text-slate-900 placeholder-slate-400 font-medium"
+                        />
+                        {searchLocation && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchLocation('')}
+                            className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 mr-2 shrink-0 transition-colors cursor-pointer"
+                            title="Clear location"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={handleSearchSubmit}
+                        className="w-full md:w-auto px-7 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow transition-all shrink-0 flex items-center justify-center space-x-2 cursor-pointer"
+                      >
+                        <span>Search Jobs</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Popular Skill Quick Filters */}
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300 pt-1">
+                      <span className="font-semibold text-slate-200">Trending:</span>
+                      {['Python & Django', 'React & Full Stack', 'MySQL & Backend', 'SAP MM/SD', 'AI & Machine Learning', 'Remote Jobs'].map((skill) => (
+                        <button
+                          key={skill}
+                          onClick={() => handleQuickFilter(skill)}
+                          className="px-3 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700/90 text-slate-200 font-geometric-mono text-[11px] font-medium transition-all border border-slate-700/60 cursor-pointer"
+                        >
+                          {skill}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Trust Indicators */}
+                    <div className="flex items-center space-x-4 pt-2 text-xs text-slate-400">
+                      <div className="flex -space-x-2">
+                        <img className="inline-block h-7 w-7 rounded-full ring-2 ring-slate-900 object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&h=100&q=80" alt="Placed candidate" referrerPolicy="no-referrer" />
+                        <img className="inline-block h-7 w-7 rounded-full ring-2 ring-slate-900 object-cover" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&h=100&q=80" alt="Placed candidate" referrerPolicy="no-referrer" />
+                        <img className="inline-block h-7 w-7 rounded-full ring-2 ring-slate-900 object-cover" src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=100&h=100&q=80" alt="Placed candidate" referrerPolicy="no-referrer" />
+                      </div>
+                      <span className="text-slate-300 font-medium">
+                        Joined by <strong className="text-white font-geometric-mono">500+</strong> candidates placed across 32+ verified tech leaders
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right Column: High-Impact Responsive Visual Showcase (5 cols) */}
+                  <div className="lg:col-span-5">
+                    <div className="relative mx-auto max-w-md lg:max-w-none">
+                      {/* Main Image Container */}
+                      <div className="relative rounded-3xl border border-slate-700/80 bg-slate-800/80 p-2 shadow-2xl overflow-hidden group">
+                        <ResponsiveImage
+                          src="https://images.unsplash.com/photo-1522071820081-009f0129c71c"
+                          alt="Jobskül tech engineers collaborating"
+                          aspectRatio="4/3"
+                          priority={true}
+                          className="rounded-2xl group-hover:scale-105 transition-transform duration-700"
+                          sizes="(max-width: 1024px) 90vw, 480px"
+                        />
+
+                        {/* Floating Badge 1 - Top Left */}
+                        <div className="absolute top-5 left-5 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3 shadow-xl flex items-center space-x-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-white font-geometric-mono">98% ATS Match</p>
+                            <p className="text-[10px] text-slate-400">Project-Verified Profiles</p>
+                          </div>
+                        </div>
+
+                        {/* Floating Badge 2 - Bottom Right */}
+                        <div className="absolute bottom-5 right-5 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3 shadow-xl flex items-center space-x-2.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                          <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-sky-400">
+                            <Briefcase className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-white font-geometric-mono">14+ Live Vacancies</p>
+                            <p className="text-[10px] text-slate-400">Direct Employer Reviews</p>
+                          </div>
+                        </div>
+
+                        {/* Live Activity Indicator Bar */}
+                        <div className="absolute bottom-5 left-5 bg-slate-950/80 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-slate-800 text-[10px] font-geometric-mono text-emerald-400 flex items-center space-x-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                          <span>Active Hiring Pulse</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* PROMOTIONAL TICKER & CAMPUS RECRUITMENT PARTNERSHIP BANNER */}
+            <div className="bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-950 text-white border-y border-blue-900/60 shadow-inner py-3.5 px-4 sm:px-6 lg:px-8">
+              <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+                <div className="flex items-center space-x-3 text-left">
+                  <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 text-[11px] shrink-0">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Campus & Enterprise Drives</span>
+                  </div>
+                  <p className="text-slate-300 font-medium hidden sm:inline">
+                    🎓 <strong className="text-white font-bold">2,480+ Students Placed</strong> • 🏢 <strong className="text-white font-bold">180+ Enterprise Partners</strong> • 💼 <strong className="text-white font-bold">₹4.5L – ₹28L CTC</strong> • 🛡️ 100% Verified
+                  </p>
                 </div>
 
-                <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
-                  Learn. Build. Showcase. <span className="text-[#38BDF8]">Get Hired.</span>
-                </h1>
-                <p className="text-slate-300 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
-                  Discover verified software, full-stack, and tech roles with ATS matching, project verification, and direct employer pipelines.
-                </p>
-
-                {/* Main Search Bar Box */}
-                <div className="bg-white rounded-xl p-2 sm:p-2.5 shadow-xl max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-2 border border-[#E2E8F0] text-[#0F172A]">
-                  <div className="relative flex-1 w-full flex items-center pl-3">
-                    <Search className="w-5 h-5 text-[#94A3B8] shrink-0" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSearchSubmit();
-                      }}
-                      placeholder="Job title, skill (Python, React, MySQL), or company..."
-                      className="w-full p-2.5 text-xs sm:text-sm bg-transparent focus:outline-none text-[#0F172A] placeholder-[#94A3B8] font-medium"
-                    />
-                    {searchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery('')}
-                        className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 mr-2 shrink-0 transition-colors"
-                        title="Clear search query"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="hidden md:block w-px h-8 bg-[#E2E8F0]" />
-
-                  <div className="relative flex-1 w-full flex items-center pl-3">
-                    <MapPin className="w-5 h-5 text-[#94A3B8] shrink-0" />
-                    <input
-                      type="text"
-                      value={searchLocation}
-                      onChange={(e) => setSearchLocation(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSearchSubmit();
-                      }}
-                      placeholder="City (Bengaluru, Pune, Remote)..."
-                      className="w-full p-2.5 text-xs sm:text-sm bg-transparent focus:outline-none text-[#0F172A] placeholder-[#94A3B8] font-medium"
-                    />
-                    {searchLocation && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchLocation('')}
-                        className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 mr-2 shrink-0 transition-colors"
-                        title="Clear location"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-
+                <div className="flex items-center space-x-2.5 shrink-0">
                   <button
-                    onClick={handleSearchSubmit}
-                    className="w-full md:w-auto px-7 py-3 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg text-xs sm:text-sm font-bold shadow-xs transition-colors shrink-0 flex items-center justify-center space-x-2 cursor-pointer"
+                    onClick={() => setPromotionModalOpen(true)}
+                    className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl font-bold text-xs shadow-xs hover:shadow transition-all cursor-pointer"
                   >
-                    <span>Search Jobs</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Promote Jobskül</span>
+                  </button>
+                  <button
+                    onClick={() => setPromotionModalOpen(true)}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-semibold text-xs border border-white/20 transition-all cursor-pointer"
+                  >
+                    <span>Request College Drive</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* PLATFORM STATS STRIP - Exact Live Site Figures */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-7 shadow-xs text-center">
+                <div className="border-r border-slate-100 last:border-r-0">
+                  <p className="text-2xl sm:text-3xl font-black font-geometric-mono text-blue-600">14+ Live Jobs</p>
+                  <p className="text-xs font-semibold text-slate-500 mt-1">Verified Vacancies</p>
+                </div>
+                <div className="border-r border-slate-100 last:border-r-0">
+                  <p className="text-2xl sm:text-3xl font-black font-geometric-mono text-slate-900">32+ Verified Companies</p>
+                  <p className="text-xs font-semibold text-slate-500 mt-1">Actively Hiring Partners</p>
+                </div>
+                <div className="border-r border-slate-100 last:border-r-0">
+                  <p className="text-2xl sm:text-3xl font-black font-geometric-mono text-emerald-600">500+ Placed</p>
+                  <p className="text-xs font-semibold text-slate-500 mt-1">Across Tech & Non-Tech</p>
+                </div>
+                <div>
+                  <p className="text-2xl sm:text-3xl font-black font-geometric-mono text-amber-500">4.8 Rating</p>
+                  <p className="text-xs font-semibold text-slate-500 mt-1">Platform Feedback Score</p>
+                </div>
+              </div>
+            </div>
+
+            {/* BROWSE JOB CATEGORIES - Exact 8 Live Categories */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-xs space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+                      Explore Job Categories
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Curated opportunities across all 8 specialized industry categories.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setFilters(prev => ({ ...prev, category: 'All' }));
+                      document.getElementById('job-listings-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
+                  >
+                    View All Categories &rarr;
                   </button>
                 </div>
 
-                {/* Popular Skill Quick Filters */}
-                <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-slate-300 pt-2">
-                  <span className="font-semibold text-white">Trending Roles:</span>
-                  {['Python & Django', 'React & Full Stack', 'MySQL & Backend', 'SAP MM/SD', 'AI & Machine Learning', 'Remote Jobs'].map((skill) => (
-                    <button
-                      key={skill}
-                      onClick={() => handleQuickFilter(skill)}
-                      className="px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white font-geometric-mono text-[11px] font-medium transition-colors border border-white/10 cursor-pointer"
-                    >
-                      {skill}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Geometric subtle corner accents */}
-              <div className="absolute top-0 right-0 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-            </div>
-
-            {/* PLATFORM STATS STRIP */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white rounded-xl border border-[#E2E8F0] p-6 shadow-xs text-center">
-                <div className="border-r border-[#E2E8F0]/60 last:border-r-0">
-                  <p className="text-2xl sm:text-3xl font-black font-geometric-mono text-[#2563EB]">12,400+</p>
-                  <p className="text-xs font-semibold text-[#64748B] mt-0.5">Candidates Placed</p>
-                </div>
-                <div className="border-r border-[#E2E8F0]/60 last:border-r-0">
-                  <p className="text-2xl sm:text-3xl font-black font-geometric-mono text-[#0F172A]">450+</p>
-                  <p className="text-xs font-semibold text-[#64748B] mt-0.5">Verified Companies</p>
-                </div>
-                <div className="border-r border-[#E2E8F0]/60 last:border-r-0">
-                  <p className="text-2xl sm:text-3xl font-black font-geometric-mono text-emerald-600">₹8.5 LPA</p>
-                  <p className="text-xs font-semibold text-[#64748B] mt-0.5">Average Starting CTC</p>
-                </div>
-                <div>
-                  <p className="text-2xl sm:text-3xl font-black font-geometric-mono text-amber-500">4.9 / 5</p>
-                  <p className="text-xs font-semibold text-[#64748B] mt-0.5">Candidate Placed Rating</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {[
+                    { name: 'Marketing & Sales', icon: TrendingUp, count: jobs.filter(j => j.category === 'Marketing & Sales').length },
+                    { name: 'Software', icon: Code2, count: jobs.filter(j => j.category === 'Software').length },
+                    { name: 'Retail & Products', icon: Building2, count: jobs.filter(j => j.category === 'Retail & Products').length },
+                    { name: 'Human Resource', icon: Users, count: jobs.filter(j => j.category === 'Human Resource').length },
+                    { name: 'Finance', icon: Award, count: jobs.filter(j => j.category === 'Finance').length },
+                    { name: 'Management', icon: Briefcase, count: jobs.filter(j => j.category === 'Management').length },
+                    { name: 'Customer Help', icon: CheckCircle2, count: jobs.filter(j => j.category === 'Customer Help').length },
+                    { name: 'Market Research', icon: Search, count: jobs.filter(j => j.category === 'Market Research').length }
+                  ].map((cat) => {
+                    const Icon = cat.icon;
+                    const isSelected = filters.category.toLowerCase() === cat.name.toLowerCase();
+                    return (
+                      <button
+                        key={cat.name}
+                        onClick={() => {
+                          setFilters(prev => ({
+                            ...prev,
+                            category: isSelected ? 'All' : cat.name
+                          }));
+                          document.getElementById('job-listings-section')?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                        className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between space-y-3 cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-50/80 border-blue-500 shadow-xs ring-1 ring-blue-500/20'
+                            : 'bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-md border-slate-200/80'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-white border border-slate-200/80 flex items-center justify-center text-blue-600 shadow-2xs">
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs sm:text-sm font-bold text-slate-900 leading-snug">{cat.name}</p>
+                          <p className="text-[11px] text-slate-500 font-geometric-mono mt-0.5">{cat.count} openings</p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -599,19 +818,19 @@ export function App() {
                 {/* Right Job Cards List (9 cols) */}
                 <div className="lg:col-span-9 space-y-4">
                   {/* Filter Status Bar */}
-                  <div className="bg-white rounded-xl border border-[#E2E8F0] p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="text-xs text-[#64748B]">
-                      Showing <strong className="text-[#0F172A] font-geometric-mono">{filteredJobs.length}</strong> {filteredJobs.length === 1 ? 'matching verified opportunity' : 'matching verified opportunities'}
+                  <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="text-xs text-slate-500 font-medium">
+                      Showing <strong className="text-slate-900 font-geometric-mono font-bold">{filteredJobs.length}</strong> {filteredJobs.length === 1 ? 'matching verified opportunity' : 'matching verified opportunities'}
                       {searchQuery && <span> for &ldquo;{searchQuery}&rdquo;</span>}
                       {searchLocation && <span> in &ldquo;{searchLocation}&rdquo;</span>}
                     </div>
 
                     <div className="flex items-center space-x-2 text-xs">
-                      <span className="text-[#64748B] font-medium">Sort by:</span>
+                      <span className="text-slate-500 font-medium">Sort by:</span>
                       <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value as 'relevant' | 'salary' | 'latest')}
-                        className="bg-slate-50 border border-[#E2E8F0] rounded-lg p-1.5 text-xs font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                        className="bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
                       >
                         <option value="relevant">Most Relevant</option>
                         <option value="salary">Highest Salary</option>
@@ -622,79 +841,79 @@ export function App() {
 
                   {/* Active Filter Chips */}
                   {(searchQuery || searchLocation || filters.category !== 'All' || filters.workMode !== 'All' || filters.employmentType !== 'All' || filters.experienceLevel !== 'All' || filters.salaryMin > 0 || filters.verifiedOnly) && (
-                    <div className="flex flex-wrap items-center gap-1.5 p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-xs">
+                    <div className="flex flex-wrap items-center gap-1.5 p-3.5 bg-blue-50/60 rounded-2xl border border-blue-100 text-xs">
                       <span className="text-[11px] font-bold text-blue-900 mr-1 flex items-center space-x-1">
-                        <Filter className="w-3 h-3 text-[#2563EB]" />
+                        <Filter className="w-3 h-3 text-blue-600" />
                         <span>Active Filters:</span>
                       </span>
 
                       {searchQuery && (
-                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200/80 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-800 shadow-2xs">
                           <span>Keyword: &ldquo;{searchQuery}&rdquo;</span>
-                          <button onClick={() => setSearchQuery('')} className="hover:text-rose-600 ml-1">
+                          <button onClick={() => setSearchQuery('')} className="hover:text-rose-600 ml-1 cursor-pointer">
                             <X className="w-3 h-3" />
                           </button>
                         </span>
                       )}
 
                       {searchLocation && (
-                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200/80 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-800 shadow-2xs">
                           <span>Location: &ldquo;{searchLocation}&rdquo;</span>
-                          <button onClick={() => setSearchLocation('')} className="hover:text-rose-600 ml-1">
+                          <button onClick={() => setSearchLocation('')} className="hover:text-rose-600 ml-1 cursor-pointer">
                             <X className="w-3 h-3" />
                           </button>
                         </span>
                       )}
 
                       {filters.category !== 'All' && (
-                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200/80 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-800 shadow-2xs">
                           <span>Category: {filters.category}</span>
-                          <button onClick={() => setFilters(f => ({ ...f, category: 'All' }))} className="hover:text-rose-600 ml-1">
+                          <button onClick={() => setFilters(f => ({ ...f, category: 'All' }))} className="hover:text-rose-600 ml-1 cursor-pointer">
                             <X className="w-3 h-3" />
                           </button>
                         </span>
                       )}
 
                       {filters.workMode !== 'All' && (
-                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200/80 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-800 shadow-2xs">
                           <span>Work Mode: {filters.workMode}</span>
-                          <button onClick={() => setFilters(f => ({ ...f, workMode: 'All' }))} className="hover:text-rose-600 ml-1">
+                          <button onClick={() => setFilters(f => ({ ...f, workMode: 'All' }))} className="hover:text-rose-600 ml-1 cursor-pointer">
                             <X className="w-3 h-3" />
                           </button>
                         </span>
                       )}
 
                       {filters.employmentType !== 'All' && (
-                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200/80 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-800 shadow-2xs">
                           <span>Type: {filters.employmentType}</span>
-                          <button onClick={() => setFilters(f => ({ ...f, employmentType: 'All' }))} className="hover:text-rose-600 ml-1">
+                          <button onClick={() => setFilters(f => ({ ...f, employmentType: 'All' }))} className="hover:text-rose-600 ml-1 cursor-pointer">
                             <X className="w-3 h-3" />
                           </button>
                         </span>
                       )}
 
                       {filters.experienceLevel !== 'All' && (
-                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200/80 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-800 shadow-2xs">
                           <span>Exp: {filters.experienceLevel}</span>
-                          <button onClick={() => setFilters(f => ({ ...f, experienceLevel: 'All' }))} className="hover:text-rose-600 ml-1">
+                          <button onClick={() => setFilters(f => ({ ...f, experienceLevel: 'All' }))} className="hover:text-rose-600 ml-1 cursor-pointer">
                             <X className="w-3 h-3" />
                           </button>
                         </span>
                       )}
 
                       {filters.salaryMin > 0 && (
-                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200/80 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-800 shadow-2xs">
                           <span>Min ₹{filters.salaryMin} LPA</span>
-                          <button onClick={() => setFilters(f => ({ ...f, salaryMin: 0 }))} className="hover:text-rose-600 ml-1">
+                          <button onClick={() => setFilters(f => ({ ...f, salaryMin: 0 }))} className="hover:text-rose-600 ml-1 cursor-pointer">
                             <X className="w-3 h-3" />
                           </button>
                         </span>
                       )}
 
                       {filters.verifiedOnly && (
-                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs">
+                        <span className="inline-flex items-center space-x-1 bg-white border border-blue-200/80 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-800 shadow-2xs">
                           <span>Verified Companies Only</span>
-                          <button onClick={() => setFilters(f => ({ ...f, verifiedOnly: false }))} className="hover:text-rose-600 ml-1">
+                          <button onClick={() => setFilters(f => ({ ...f, verifiedOnly: false }))} className="hover:text-rose-600 ml-1 cursor-pointer">
                             <X className="w-3 h-3" />
                           </button>
                         </span>
@@ -714,7 +933,7 @@ export function App() {
                             verifiedOnly: false,
                           });
                         }}
-                        className="text-[11px] font-bold text-[#2563EB] hover:text-[#1D4ED8] hover:underline ml-auto flex items-center space-x-1"
+                        className="text-[11px] font-bold text-blue-600 hover:text-blue-700 ml-auto flex items-center space-x-1 cursor-pointer transition-colors"
                       >
                         <RotateCcw className="w-3 h-3" />
                         <span>Clear All</span>
@@ -724,10 +943,12 @@ export function App() {
 
                   {/* Empty state or Job Cards */}
                   {filteredJobs.length === 0 ? (
-                    <div className="bg-white rounded-xl border border-[#E2E8F0] p-12 text-center space-y-4">
-                      <Briefcase className="w-12 h-12 text-[#94A3B8] mx-auto" />
-                      <h3 className="text-base font-bold text-[#0F172A]">No matching jobs found</h3>
-                      <p className="text-xs text-[#64748B] max-w-md mx-auto">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center space-y-4 shadow-xs">
+                      <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center mx-auto text-slate-400">
+                        <Briefcase className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-base font-bold text-slate-900">No matching jobs found</h3>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
                         Try clearing some search filters or searching for common terms like "Python", "React", or "Software Engineer".
                       </p>
                       <button
@@ -744,7 +965,7 @@ export function App() {
                             verifiedOnly: false,
                           });
                         }}
-                        className="px-4 py-2 bg-[#2563EB] text-white rounded-lg text-xs font-bold hover:bg-[#1D4ED8] transition-colors"
+                        className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-xs hover:shadow transition-all cursor-pointer"
                       >
                         Reset All Filters
                       </button>
@@ -773,20 +994,205 @@ export function App() {
               </div>
             </div>
 
-            {/* VERIFIED HIRING PARTNERS LOGO STRIP */}
+            {/* THE JOBSKÜL ADVANTAGE - Responsive Visual Pillars */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-              <div className="bg-white rounded-xl border border-[#E2E8F0] p-8 shadow-xs text-center space-y-6">
-                <span className="text-xs font-geometric-mono font-bold uppercase tracking-widest text-[#64748B]">
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-slate-200/90 pb-4">
+                  <div>
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200/60 text-[11px] font-geometric-mono font-bold uppercase tracking-wider">
+                      The Jobskül Advantage
+                    </span>
+                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 tracking-tight">
+                      Learn. Train. Deploy.
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-xl">
+                      A complete ecosystem combining hands-on technical incubation, verified institutional drives, and direct enterprise placement.
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setActiveTab('services')}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center space-x-1 cursor-pointer"
+                    >
+                      <span>Explore all programs</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Pillar 1: Project-Based Learning */}
+                  <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group">
+                    <div className="relative overflow-hidden">
+                      <ResponsiveImage
+                        src="https://images.unsplash.com/photo-1498050108023-c5249f4df085"
+                        alt="Project based learning code workspace"
+                        aspectRatio="16/10"
+                        className="group-hover:scale-105 transition-transform duration-500"
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                      />
+                      <div className="absolute top-3 left-3 bg-slate-900/85 backdrop-blur-xs text-white text-[10px] font-geometric-mono font-semibold px-2.5 py-1 rounded-md border border-slate-700/80">
+                        JILP Capstone Incubation
+                      </div>
+                    </div>
+                    <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                      <div className="space-y-2">
+                        <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
+                          Verifiable Code Over Simple Resumes
+                        </h3>
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                          Build live full-stack web applications, microservices with Python/Django, and relational schemas. Every candidate receives a tamper-proof portfolio link.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('learn')}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-700 inline-flex items-center space-x-1.5 pt-2 border-t border-slate-100 cursor-pointer"
+                      >
+                        <span>Explore 4 Project Tracks</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Pillar 2: Direct Enterprise Sourcing */}
+                  <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group">
+                    <div className="relative overflow-hidden">
+                      <ResponsiveImage
+                        src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2"
+                        alt="Enterprise technical recruiter screening candidates"
+                        aspectRatio="16/10"
+                        className="group-hover:scale-105 transition-transform duration-500"
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                      />
+                      <div className="absolute top-3 left-3 bg-slate-900/85 backdrop-blur-xs text-white text-[10px] font-geometric-mono font-semibold px-2.5 py-1 rounded-md border border-slate-700/80">
+                        Direct Corporate Pipelines
+                      </div>
+                    </div>
+                    <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                      <div className="space-y-2">
+                        <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
+                          Direct Sourcing With Zero Agency Markup
+                        </h3>
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                          Over 32+ verified hiring enterprises source job-ready engineers directly from Jobskül. Fast-track interviews with verified skill badges.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('companies')}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-700 inline-flex items-center space-x-1.5 pt-2 border-t border-slate-100 cursor-pointer"
+                      >
+                        <span>View 32+ Hiring Companies</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Pillar 3: College Conclaves & Hackathons */}
+                  <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group">
+                    <div className="relative overflow-hidden">
+                      <ResponsiveImage
+                        src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4"
+                        alt="University tech conclave and student hackathon"
+                        aspectRatio="16/10"
+                        className="group-hover:scale-105 transition-transform duration-500"
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                      />
+                      <div className="absolute top-3 left-3 bg-slate-900/85 backdrop-blur-xs text-white text-[10px] font-geometric-mono font-semibold px-2.5 py-1 rounded-md border border-slate-700/80">
+                        Campus Alliances & Fairs
+                      </div>
+                    </div>
+                    <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                      <div className="space-y-2">
+                        <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
+                          Institutional Footprint Across 12+ States
+                        </h3>
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                          Partnering with 50+ engineering and management colleges to host on-ground hackathons, corporate HR conclaves, and campus recruitment drives.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('gallery')}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-700 inline-flex items-center space-x-1.5 pt-2 border-t border-slate-100 cursor-pointer"
+                      >
+                        <span>View Conclave Moments</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* VERIFIED HIRING PARTNERS LOGO STRIP */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-8 sm:p-10 shadow-xs text-center space-y-6">
+                <span className="text-xs font-geometric-mono font-bold uppercase tracking-widest text-slate-400">
                   Trusted by 450+ Fast-Growing Tech Enterprises & Startups
                 </span>
                 <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 opacity-85">
                   {companies.slice(0, 5).map((comp) => (
-                    <div key={comp.id} className="flex items-center space-x-2 grayscale hover:grayscale-0 transition-all cursor-pointer">
-                      <div className="w-8 h-8 rounded-lg bg-slate-50 border border-[#E2E8F0] p-1 flex items-center justify-center">
-                        <Building2 className="w-5 h-5 text-[#2563EB]" />
+                    <div key={comp.id} className="flex items-center space-x-2.5 grayscale hover:grayscale-0 transition-all cursor-pointer group">
+                      <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/80 p-1.5 flex items-center justify-center group-hover:border-blue-200 group-hover:bg-blue-50/50 transition-colors">
+                        <Building2 className="w-5 h-5 text-blue-600" />
                       </div>
-                      <span className="text-sm font-extrabold text-[#0F172A]">{comp.name}</span>
+                      <span className="text-sm font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">{comp.name}</span>
                     </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 12+ STATES COVERED NATIONWIDE */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2">
+              <div className="bg-slate-900 rounded-2xl p-8 sm:p-10 text-white shadow-xl border border-slate-800 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                  <div>
+                    <span className="px-2.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[10px] font-geometric-mono font-bold uppercase tracking-wider">
+                      Pan-India Footprint
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+                      12+ States Covered Across India
+                    </h2>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Empowering candidates and colleges with localized campus hiring and remote/onsite placements.
+                    </p>
+                  </div>
+                  <span className="text-xs font-geometric-mono text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-800 px-3 py-1.5 rounded-lg">
+                    Active Hiring Hubs
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {[
+                    { state: 'Odisha', city: 'Bhubaneswar' },
+                    { state: 'Karnataka', city: 'Bengaluru' },
+                    { state: 'Maharashtra', city: 'Pune & Mumbai' },
+                    { state: 'Delhi NCR', city: 'Noida & Gurugram' },
+                    { state: 'Telangana', city: 'Hyderabad' },
+                    { state: 'Tamil Nadu', city: 'Chennai & CBE' },
+                    { state: 'West Bengal', city: 'Kolkata' },
+                    { state: 'Gujarat', city: 'Ahmedabad' },
+                    { state: 'Uttar Pradesh', city: 'Lucknow' },
+                    { state: 'Kerala', city: 'Kochi & TVM' },
+                    { state: 'Rajasthan', city: 'Jaipur' },
+                    { state: 'Madhya Pradesh', city: 'Indore' }
+                  ].map((loc) => (
+                    <button
+                      key={loc.state}
+                      onClick={() => {
+                        setSearchLocation(loc.city);
+                        document.getElementById('job-listings-section')?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="p-3 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 rounded-xl text-left transition-all group cursor-pointer"
+                    >
+                      <div className="flex items-center space-x-1.5 text-xs font-bold text-white group-hover:text-blue-300">
+                        <MapPin className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
+                        <span className="truncate">{loc.state}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-geometric-mono mt-0.5 pl-5 truncate">
+                        {loc.city}
+                      </p>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -863,11 +1269,34 @@ export function App() {
           />
         )}
 
+        {/* TAB: CANDIDATES DIRECTORY */}
+        {activeTab === 'candidates' && (
+          <CandidatesDirectory
+            candidates={users}
+            onContactCandidate={(cand) => showToast(`Contact enquiry initiated for candidate ${cand.name}`)}
+          />
+        )}
+
         {/* TAB: HR SERVICES */}
-        {activeTab === 'services' && <HRServices />}
+        {activeTab === 'services' && <HRServices initialAudience="corporates" />}
+        {activeTab === 'services-corporates' && <HRServices initialAudience="corporates" />}
+        {activeTab === 'services-institutions' && <HRServices initialAudience="institutions" />}
+        {activeTab === 'services-individuals' && <HRServices initialAudience="individuals" />}
 
         {/* TAB: CAREER BLOG */}
         {activeTab === 'blog' && <CareerBlog articles={INITIAL_BLOG_POSTS} />}
+
+        {/* TAB: OUR TEAM */}
+        {activeTab === 'team' && <OurTeam />}
+
+        {/* TAB: FAQ */}
+        {activeTab === 'faq' && <FAQSection onContactClick={() => setActiveTab('contact')} />}
+
+        {/* TAB: GALLERY */}
+        {activeTab === 'gallery' && <GallerySection />}
+
+        {/* TAB: CONTACT */}
+        {activeTab === 'contact' && <ContactSection />}
 
         {/* TAB: ADMIN PANEL */}
         {activeTab === 'admin' && (
@@ -875,6 +1304,7 @@ export function App() {
             users={users}
             jobs={jobs}
             applications={applications}
+            companies={companies}
             onApproveJob={handleApproveJob}
             onCloseJob={handleCloseJob}
           />
@@ -903,6 +1333,9 @@ export function App() {
         initialRole={authModalRole}
         onLoginSuccess={(user) => {
           setCurrentUser(user);
+          try {
+            localStorage.setItem('jobskul_auth_user', JSON.stringify(user));
+          } catch (e) {}
           showToast(`Logged in as ${user.name}`);
           if (user.role === 'recruiter') {
             setActiveTab('recruiter-dashboard');
@@ -910,6 +1343,13 @@ export function App() {
             setActiveTab('dashboard');
           }
         }}
+      />
+
+      {/* PROMOTION & SHARE MODAL */}
+      <PromotionModal
+        isOpen={promotionModalOpen}
+        onClose={() => setPromotionModalOpen(false)}
+        onToast={showToast}
       />
 
       {/* SYSTEM TEST RUNNER MODAL */}
@@ -944,7 +1384,7 @@ export function App() {
       </button>
 
       {/* Global Footer */}
-      <Footer onNavigate={setActiveTab} />
+      <Footer onNavigate={setActiveTab} onOpenPromote={() => setPromotionModalOpen(true)} />
     </div>
   );
 }
