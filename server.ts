@@ -1,5 +1,7 @@
 import express, { Request, Response } from "express";
 import path from "path";
+import crypto from "crypto";
+import { pathToFileURL } from "url";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
@@ -35,6 +37,7 @@ let dbProgress: Record<string, StudentProgress> = {
 // Cryptographically secure OTP memory storage with expiry and rate-limiting
 interface OtpRecord {
   email: string;
+  // HMAC-SHA256 hash of the OTP (plaintext OTP is never stored in memory)
   otp: string;
   expiresAt: number;
   attempts: number;
@@ -46,6 +49,13 @@ interface OtpRecord {
   lastSentAt: number;
 }
 const dbOtps = new Map<string, OtpRecord>();
+
+function hashOtp(plainOtp: string) {
+  return crypto
+    .createHmac("sha256", process.env.OTP_SECRET || "dev_secret")
+    .update(plainOtp)
+    .digest("hex");
+}
 
 // Initialize Gemini Client
 let aiClient: GoogleGenAI | null = null;
@@ -67,9 +77,8 @@ function getGeminiClient(): GoogleGenAI | null {
   return aiClient;
 }
 
-async function startServer() {
+export async function createApp() {
   const app = express();
-  const PORT = 3000;
 
   app.use(express.json());
 
@@ -110,12 +119,13 @@ async function startServer() {
       }
 
       // Generate cryptographically random 6-digit OTP code
-      const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+      const otpCode = String(100000 + crypto.randomInt(0, 900000));
       const expiresAt = now + 10 * 60 * 1000; // 10 minutes valid
+      const otpHash = hashOtp(otpCode);
 
       dbOtps.set(cleanEmail, {
         email: cleanEmail,
-        otp: otpCode,
+        otp: otpHash,
         expiresAt,
         attempts: 0,
         role: (role as any) || 'candidate',
@@ -162,7 +172,7 @@ async function startServer() {
         message: `6-digit verification code dispatched to ${cleanEmail}`,
         expiresInSeconds: 600,
         // In local/sandbox preview, we return otpPreview for instant testing without needing third-party SMTP
-        otpPreview: otpCode
+        otpPreview: process.env.NODE_ENV !== "production" ? otpCode : undefined
       });
     } catch (err: any) {
       console.error("send-otp error:", err);
@@ -205,7 +215,8 @@ async function startServer() {
       }
 
       // Validate OTP
-      if (record.otp !== cleanOtp) {
+      const providedHash = hashOtp(cleanOtp);
+      if (record.otp !== providedHash) {
         record.attempts += 1;
         return res.status(400).json({
           error: `Incorrect verification code. ${5 - record.attempts} attempt(s) remaining.`
@@ -1187,7 +1198,9 @@ Return ONLY valid JSON:
   app.use(express.static(publicPath));
 
   // --- VITE MIDDLEWARE FOR FRONTEND ---
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV === "test") {
+    return app;
+  } else if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -1201,9 +1214,19 @@ Return ONLY valid JSON:
     });
   }
 
+  return app;
+}
+
+export async function startServer() {
+  const app = await createApp();
+  const PORT = 3000;
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Jobskül platform running at http://0.0.0.0:${PORT}`);
   });
 }
 
-startServer();
+const entryFilePath = process.argv[1];
+const isDirectRun = !!entryFilePath && import.meta.url === pathToFileURL(entryFilePath).href;
+if (isDirectRun) {
+  startServer();
+}
