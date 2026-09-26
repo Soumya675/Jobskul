@@ -107,24 +107,111 @@ export function generateJobskulEmailHtml(title: string, bodyContent: string, cta
 `;
 }
 
-// Mailer transport (lazy loaded if SMTP is configured)
+// Mailer transport (lazy loaded and dynamically configurable)
 let smtpTransport: nodemailer.Transporter | null = null;
+let lastDeliveryError: string | null = null;
+let lastDispatchedAt: string | null = null;
+let lastDeliveryStatus: 'success' | 'failed' | 'idle' = 'idle';
+
+let currentSmtpConfig: {
+  host?: string;
+  port?: number;
+  secure?: boolean;
+  user?: string;
+  pass?: string;
+  service?: string;
+  resendApiKey?: string;
+} = {
+  host: process.env.SMTP_HOST || (process.env.GMAIL_USER ? 'smtp.gmail.com' : undefined),
+  port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : (process.env.GMAIL_USER ? 465 : 587),
+  secure: process.env.SMTP_PORT === '465' || !!process.env.GMAIL_USER,
+  user: process.env.SMTP_USER || process.env.GMAIL_USER,
+  pass: process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD,
+  service: process.env.GMAIL_USER ? 'gmail' : undefined,
+  resendApiKey: process.env.RESEND_API_KEY
+};
+
+export function updateSmtpConfig(config: {
+  host?: string;
+  port?: number;
+  secure?: boolean;
+  user?: string;
+  pass?: string;
+  service?: string;
+  resendApiKey?: string;
+}) {
+  currentSmtpConfig = { ...currentSmtpConfig, ...config };
+  smtpTransport = null; // force re-creation
+  lastDeliveryError = null;
+  console.log(`[EMAIL SYSTEM] Mail configuration updated at runtime. User: ${currentSmtpConfig.user || 'None'} | Resend: ${Boolean(currentSmtpConfig.resendApiKey)}`);
+}
+
+export function getSmtpStatus() {
+  const isSmtpConfigured = Boolean(
+    (currentSmtpConfig.host || currentSmtpConfig.service) &&
+    currentSmtpConfig.user &&
+    currentSmtpConfig.pass
+  );
+  const isResendConfigured = Boolean(currentSmtpConfig.resendApiKey || process.env.RESEND_API_KEY);
+  const isConfigured = isSmtpConfigured || isResendConfigured;
+
+  let activeEngine: 'resend' | 'gmail' | 'smtp' | 'outbox' = 'outbox';
+  if (isResendConfigured) {
+    activeEngine = 'resend';
+  } else if (currentSmtpConfig.service === 'gmail' || (currentSmtpConfig.user && currentSmtpConfig.user.includes('@gmail.com'))) {
+    activeEngine = 'gmail';
+  } else if (isSmtpConfigured) {
+    activeEngine = 'smtp';
+  }
+
+  return {
+    configured: isConfigured,
+    activeEngine,
+    resendConfigured: isResendConfigured,
+    smtpConfigured: isSmtpConfigured,
+    host: currentSmtpConfig.host || (currentSmtpConfig.service ? 'Gmail Service (smtp.gmail.com)' : (isResendConfigured ? 'Resend HTTPS API (api.resend.com)' : 'Local Outbox Engine')),
+    port: currentSmtpConfig.port || 587,
+    user: currentSmtpConfig.user ? `${currentSmtpConfig.user.substring(0, 3)}***@***` : (isResendConfigured ? 'Resend API Key' : 'None'),
+    rawUser: currentSmtpConfig.user || '',
+    service: currentSmtpConfig.service || (isResendConfigured ? 'resend' : 'custom'),
+    lastDeliveryStatus,
+    lastDeliveryError,
+    lastDispatchedAt,
+    totalDelivered: dbEmails.filter(e => e.smtpUsed).length,
+    totalOutbox: dbEmails.length
+  };
+}
 
 function getSmtpTransport(): nodemailer.Transporter | null {
-  if (!smtpTransport && process.env.SMTP_HOST && process.env.SMTP_USER) {
+  const host = currentSmtpConfig.host || process.env.SMTP_HOST;
+  const user = currentSmtpConfig.user || process.env.SMTP_USER || process.env.GMAIL_USER;
+  const pass = currentSmtpConfig.pass || process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+  const port = currentSmtpConfig.port || (process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587);
+  const secure = currentSmtpConfig.secure !== undefined ? currentSmtpConfig.secure : (port === 465);
+
+  if (!smtpTransport && user && pass) {
     try {
-      smtpTransport = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587', 10),
-        secure: process.env.SMTP_PORT === '465',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
-      console.log(`[EMAIL SYSTEM] SMTP Transport configured for ${process.env.SMTP_HOST}`);
-    } catch (err) {
+      if (currentSmtpConfig.service === 'gmail' || (user && user.includes('@gmail.com'))) {
+        smtpTransport = nodemailer.createTransport({
+          service: 'gmail',
+          auth: { user, pass }
+        });
+        console.log(`[EMAIL SYSTEM] Gmail SMTP Transport initialized for: ${user}`);
+      } else if (host) {
+        smtpTransport = nodemailer.createTransport({
+          host,
+          port,
+          secure,
+          auth: { user, pass },
+          tls: {
+            rejectUnauthorized: false
+          }
+        });
+        console.log(`[EMAIL SYSTEM] Custom SMTP Transport initialized for host: ${host}:${port}`);
+      }
+    } catch (err: any) {
       console.error('[EMAIL SYSTEM] Failed to create SMTP transport:', err);
+      lastDeliveryError = `Transport Init Failed: ${err.message}`;
     }
   }
   return smtpTransport;
@@ -142,31 +229,85 @@ export interface SendEmailOptions {
   metadata?: Record<string, any>;
 }
 
-export async function sendSystemEmail(options: SendEmailOptions): Promise<EmailRecord> {
+export async function sendSystemEmail(options: SendEmailOptions): Promise<EmailRecord & { deliveryMethod: 'resend' | 'smtp' | 'outbox'; deliveryError?: string | null }> {
   const fromAddress = process.env.SMTP_FROM || 'Jobskül Platform <notifications@jobskul.com>';
   const html = generateJobskulEmailHtml(options.title, options.bodyContent, options.ctaLabel, options.ctaUrl);
   const messageId = `<jsk-${Date.now()}-${Math.random().toString(36).substring(2, 8)}@jobskul.com>`;
 
   let smtpUsed = false;
-  const transport = getSmtpTransport();
+  let deliveryMethod: 'resend' | 'smtp' | 'outbox' = 'outbox';
+  let sendError: string | null = null;
 
-  if (transport) {
+  // 1. Check for Resend API (HTTP REST — bypasses container port blocks)
+  const resendApiKey = currentSmtpConfig.resendApiKey || process.env.RESEND_API_KEY;
+  if (resendApiKey) {
     try {
-      await transport.sendMail({
-        from: fromAddress,
-        to: options.to,
-        subject: options.subject,
-        text: options.plainText,
-        html: html,
-        messageId,
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${resendApiKey}`
+        },
+        body: JSON.stringify({
+          from: fromAddress.includes('@') ? fromAddress : 'Jobskül Notifications <onboarding@resend.dev>',
+          to: [options.to],
+          subject: options.subject,
+          html: html,
+          text: options.plainText
+        })
       });
-      smtpUsed = true;
-      console.log(`[EMAIL DISPATCHED via SMTP] To: ${options.to} | Subject: "${options.subject}"`);
-    } catch (err) {
-      console.warn(`[EMAIL SYSTEM] SMTP send failed; falling back to transactional outbox delivery:`, err);
+
+      const resData: any = await res.json().catch(() => ({}));
+      if (res.ok && resData?.id) {
+        smtpUsed = true;
+        deliveryMethod = 'resend';
+        lastDeliveryStatus = 'success';
+        lastDeliveryError = null;
+        lastDispatchedAt = new Date().toISOString();
+        console.log(`[EMAIL DISPATCHED via Resend HTTP API] Message ID: ${resData.id} to: ${options.to}`);
+      } else {
+        sendError = resData?.message || `Resend HTTP error ${res.status}`;
+        console.warn(`[EMAIL SYSTEM] Resend delivery rejected:`, resData);
+      }
+    } catch (err: any) {
+      sendError = `Resend Fetch Exception: ${err.message}`;
+      console.warn(`[EMAIL SYSTEM] Resend request failed:`, err);
     }
-  } else {
-    console.log(`[EMAIL DISPATCHED via Jobskül Outbox Engine] To: ${options.to} | Subject: "${options.subject}"`);
+  }
+
+  // 2. If Resend not used/failed, try Nodemailer SMTP Transport (Gmail or Custom SMTP)
+  if (!smtpUsed) {
+    const transport = getSmtpTransport();
+    if (transport) {
+      try {
+        const info = await transport.sendMail({
+          from: fromAddress,
+          to: options.to,
+          subject: options.subject,
+          text: options.plainText,
+          html: html,
+          messageId,
+        });
+        smtpUsed = true;
+        deliveryMethod = 'smtp';
+        lastDeliveryStatus = 'success';
+        lastDeliveryError = null;
+        lastDispatchedAt = new Date().toISOString();
+        console.log(`[EMAIL DISPATCHED via SMTP] To: ${options.to} | MessageId: ${info.messageId}`);
+      } catch (err: any) {
+        sendError = `SMTP Error: ${err.message || String(err)}`;
+        lastDeliveryStatus = 'failed';
+        lastDeliveryError = sendError;
+        console.warn(`[EMAIL SYSTEM] SMTP transmission failed:`, err);
+      }
+    } else if (!resendApiKey) {
+      sendError = "No external mail credentials (RESEND_API_KEY, GMAIL_APP_PASSWORD, or SMTP_PASS) are configured. Saved to Jobskül transactional outbox.";
+    }
+  }
+
+  if (sendError && !smtpUsed) {
+    lastDeliveryStatus = 'failed';
+    lastDeliveryError = sendError;
   }
 
   const record: EmailRecord = {
@@ -176,14 +317,22 @@ export async function sendSystemEmail(options: SendEmailOptions): Promise<EmailR
     subject: options.subject,
     type: options.type,
     timestamp: new Date().toISOString(),
-    status: 'delivered',
+    status: smtpUsed ? 'delivered' : 'sent',
     html,
     text: options.plainText,
     messageId,
     smtpUsed,
-    metadata: options.metadata,
+    metadata: {
+      ...options.metadata,
+      deliveryMethod,
+      deliveryError: sendError
+    },
   };
 
   dbEmails.unshift(record);
-  return record;
+  return {
+    ...record,
+    deliveryMethod,
+    deliveryError: sendError
+  };
 }

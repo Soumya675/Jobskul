@@ -23,6 +23,15 @@ import { ContactSection } from './components/ContactSection';
 import { CandidatesDirectory } from './components/CandidatesDirectory';
 import { ResponsiveImage } from './components/ResponsiveImage';
 import { PromotionModal } from './components/PromotionModal';
+import { PlacedCandidatesModal } from './components/PlacedCandidatesModal';
+import { CourseLearningHub } from './components/CourseLearningHub';
+import { SkillAssessmentLab } from './components/SkillAssessmentLab';
+import { PlacementTrackerHub } from './components/PlacementTrackerHub';
+import { JobskulHireAIPartnerDashboard } from './components/JobskulHireAIPartnerDashboard';
+import { AICareerAssistant } from './components/AICareerAssistant';
+import { MentorshipCommunityHub } from './components/MentorshipCommunityHub';
+import { CollegePortal } from './components/CollegePortal';
+import { PaymentsSubscriptions } from './components/PaymentsSubscriptions';
 
 import {
   INITIAL_JOBS,
@@ -30,9 +39,24 @@ import {
   INITIAL_PROJECTS,
   INITIAL_USERS,
   INITIAL_APPLICATIONS,
-  INITIAL_BLOG_POSTS
+  INITIAL_BLOG_POSTS,
+  INITIAL_PLACED_CANDIDATES
 } from './data/initialData';
-import { JobListing, JobApplication, User, UserRole } from './types';
+import {
+  INITIAL_COURSES,
+  INITIAL_LIVE_CLASSES,
+  INITIAL_ASSESSMENT_QUESTIONS,
+  INITIAL_CODING_PROBLEMS,
+  INITIAL_PLACEMENT_DRIVES,
+  INITIAL_APPLICATION_TRACKERS,
+  INITIAL_PARTNER_POSITIONS,
+  INITIAL_JD_REQUESTS,
+  INITIAL_PARTNER_INTERVIEWS,
+  INITIAL_MENTORS,
+  INITIAL_FORUM_TOPICS,
+  INITIAL_PAYMENT_HISTORY
+} from './data/learningPlacementData';
+import { JobListing, JobApplication, User, UserRole, PlacedCandidate, PartnerPosition, JDRequest, PartnerInterview, PlacementDrive } from './types';
 
 import {
   Search,
@@ -72,6 +96,24 @@ export function App() {
 
   // Promotion & Growth modal
   const [promotionModalOpen, setPromotionModalOpen] = useState(false);
+
+  // Placed Candidates & Real Image Suite
+  const [placedCandidates, setPlacedCandidates] = useState<PlacedCandidate[]>(INITIAL_PLACED_CANDIDATES);
+  const [placedModalOpen, setPlacedModalOpen] = useState(false);
+
+  // --- COURSE & PLACEMENT PLATFORM STATE ---
+  const [courses] = useState(INITIAL_COURSES);
+  const [liveClasses] = useState(INITIAL_LIVE_CLASSES);
+  const [assessmentQuestions] = useState(INITIAL_ASSESSMENT_QUESTIONS);
+  const [codingProblems] = useState(INITIAL_CODING_PROBLEMS);
+  const [placementDrives, setPlacementDrives] = useState<PlacementDrive[]>(INITIAL_PLACEMENT_DRIVES);
+  const [applicationTrackers] = useState(INITIAL_APPLICATION_TRACKERS);
+  const [partnerPositions, setPartnerPositions] = useState<PartnerPosition[]>(INITIAL_PARTNER_POSITIONS);
+  const [jdRequests, setJdRequests] = useState<JDRequest[]>(INITIAL_JD_REQUESTS);
+  const [partnerInterviews, setPartnerInterviews] = useState<PartnerInterview[]>(INITIAL_PARTNER_INTERVIEWS);
+  const [mentors] = useState(INITIAL_MENTORS);
+  const [forumTopics] = useState(INITIAL_FORUM_TOPICS);
+  const [paymentHistory] = useState(INITIAL_PAYMENT_HISTORY);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -121,6 +163,15 @@ export function App() {
       .then(data => {
         if (data.applications && data.applications.length > 0) {
           setApplications(data.applications);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/placed-candidates')
+      .then(res => res.json())
+      .then(data => {
+        if (data.candidates && data.candidates.length > 0) {
+          setPlacedCandidates(data.candidates);
         }
       })
       .catch(() => {});
@@ -306,7 +357,130 @@ export function App() {
     showToast('Job listing marked as closed.');
   };
 
+  // --- PARTNER & RECRUITMENT HANDLERS ---
+  const handleAddPartnerPosition = (newPos: PartnerPosition) => {
+    setPartnerPositions([newPos, ...partnerPositions]);
+    // Also syndicate as a live job listing if Open
+    if (newPos.status === 'Open') {
+      const syndicatedJob: JobListing = {
+        id: `job-sync-${Date.now()}`,
+        title: newPos.title,
+        company: newPos.company,
+        companyId: 'comp-enterprise-partner',
+        companyVerified: true,
+        location: newPos.location,
+        salaryMin: 14,
+        salaryMax: 22,
+        salaryDisplay: newPos.salaryRange,
+        experienceLevel: '3-5 Years',
+        experienceYearsRequired: 3,
+        employmentType: newPos.employmentType,
+        workMode: 'Hybrid',
+        industry: 'Software & Platform Engineering',
+        category: 'Software',
+        description: newPos.description,
+        responsibilities: newPos.responsibilities,
+        requiredSkills: newPos.skills,
+        preferredSkills: ['PostgreSQL', 'Docker'],
+        educationRequirements: 'B.Tech / MCA / BE',
+        benefits: newPos.benefits,
+        openings: newPos.openings,
+        postedDate: newPos.createdDate,
+        applicationDeadline: newPos.deadline,
+        status: 'active',
+        applicantCount: 0
+      };
+      setJobs([syndicatedJob, ...jobs]);
+    }
+  };
+
+  const handleUpdatePartnerPosition = (id: string, updates: Partial<PartnerPosition>) => {
+    setPartnerPositions(partnerPositions.map(p => p.id === id ? { ...p, ...updates } : p));
+  };
+
+  const handleAddJDRequest = (newReq: JDRequest) => {
+    setJdRequests([newReq, ...jdRequests]);
+  };
+
+  const handleUpdateJDRequest = (id: string, updates: Partial<JDRequest>) => {
+    setJdRequests(jdRequests.map(r => r.id === id ? { ...r, ...updates } : r));
+  };
+
+  const handleConvertJDToPosition = (req: JDRequest) => {
+    const newPos: PartnerPosition = {
+      id: `pos-${Date.now()}`,
+      jobId: `JOB-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+      title: req.jobTitle,
+      company: req.clientName,
+      department: req.department,
+      location: req.location,
+      employmentType: 'Full-time',
+      experience: req.experienceRequired,
+      salaryRange: `₹${req.salaryMin} - ₹${req.salaryMax} LPA`,
+      skills: req.requiredSkills,
+      description: req.jobDescription,
+      responsibilities: [req.responsibilities || 'Core sprint deliverables'],
+      qualifications: ['Engineering Degree / MCA'],
+      benefits: ['Medical insurance', 'Annual bonus'],
+      openings: req.openings,
+      status: 'Open',
+      createdDate: new Date().toISOString().split('T')[0],
+      deadline: '2026-10-30',
+      assignedRecruiter: currentUser?.name || 'Partnerships Lead',
+      applicantsCount: 0,
+      shortlistedCount: 0,
+      interviewCount: 0
+    };
+    handleAddPartnerPosition(newPos);
+    handleUpdateJDRequest(req.id, {
+      status: 'Approved',
+      approvedDate: new Date().toISOString().split('T')[0],
+      convertedPositionId: newPos.id
+    });
+  };
+
+  const handleSchedulePartnerInterview = (newInt: PartnerInterview) => {
+    setPartnerInterviews([newInt, ...partnerInterviews]);
+  };
+
+  const handleUpdatePartnerInterview = (id: string, updates: Partial<PartnerInterview>) => {
+    setPartnerInterviews(partnerInterviews.map(i => i.id === id ? { ...i, ...updates } : i));
+  };
+
   const handleSwitchPersona = (role: UserRole) => {
+    if (role === 'partner') {
+      const partnerUser: User = {
+        id: 'user-partner-superadmin',
+        name: 'Arun Mehta',
+        email: 'partnerships@jobskul.com',
+        role: 'partner',
+        partnerRole: 'Super Admin',
+        organization: 'Jobskül Enterprise Alliances',
+        team: 'Corporate Partnerships',
+        phone: '+91 99887 76655'
+      };
+      setCurrentUser(partnerUser);
+      showToast(`Switched active persona to Partnerships Team (${partnerUser.partnerRole})`);
+      setActiveTab('hireai-partner');
+      return;
+    }
+
+    if (role === 'college') {
+      const collegeUser: User = {
+        id: 'user-college-tpo',
+        name: 'Prof. Sunil Senapati',
+        email: 'tpo@gift.edu.in',
+        role: 'college',
+        organization: 'GIFT Autonomous Engineering College',
+        team: 'Training & Placement Office',
+        phone: '+91 98765 11223'
+      };
+      setCurrentUser(collegeUser);
+      showToast(`Switched active persona to ${collegeUser.name} (College TPO)`);
+      setActiveTab('college-portal');
+      return;
+    }
+
     const target = users.find(u => u.role === role) || users[0];
     setCurrentUser(target);
     showToast(`Switched active persona to ${target.name} (${target.role})`);
@@ -473,28 +647,30 @@ export function App() {
         </div>
       )}
 
-      {/* Global Header */}
-      <Header
-        currentUser={currentUser}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenAuth={(r) => { setAuthModalRole(r || 'candidate'); setAuthModalOpen(true); }}
-        onOpenPromote={() => setPromotionModalOpen(true)}
-        onSearchQueryChange={(query) => {
-          setSearchQuery(query);
-          setActiveTab('jobs');
-        }}
-        onSwitchUser={handleSwitchPersona}
-        onLogout={() => {
-          setCurrentUser(null);
-          localStorage.removeItem('jobskul_auth_user');
-          localStorage.removeItem('jobskul_auth_token');
-          showToast('Signed out successfully.');
-        }}
-      />
+      {/* Global Header (Hidden on dedicated Partner Panel to prevent overlapping navbar conflict) */}
+      {activeTab !== 'hireai-partner' && (
+        <Header
+          currentUser={currentUser}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onOpenAuth={(r) => { setAuthModalRole(r || 'candidate'); setAuthModalOpen(true); }}
+          onOpenPromote={() => setPromotionModalOpen(true)}
+          onSearchQueryChange={(query) => {
+            setSearchQuery(query);
+            setActiveTab('jobs');
+          }}
+          onSwitchUser={handleSwitchPersona}
+          onLogout={() => {
+            setCurrentUser(null);
+            localStorage.removeItem('jobskul_auth_user');
+            localStorage.removeItem('jobskul_auth_token');
+            showToast('Signed out successfully.');
+          }}
+        />
+      )}
 
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1">
+      {/* MAIN CONTENT AREA - Isolated z-0 container prevents in-page sticky or relative elements from overlapping global header */}
+      <main className="flex-1 relative z-0 w-full min-w-0 isolate">
         {/* TAB: HOME & FIND JOBS */}
         {(activeTab === 'home' || activeTab === 'jobs') && (
           <div className="space-y-12">
@@ -609,16 +785,56 @@ export function App() {
                       ))}
                     </div>
 
-                    {/* Trust Indicators */}
-                    <div className="flex items-center space-x-4 pt-2 text-xs text-slate-400">
-                      <div className="flex -space-x-2">
-                        <img className="inline-block h-7 w-7 rounded-full ring-2 ring-slate-900 object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&h=100&q=80" alt="Placed candidate" referrerPolicy="no-referrer" />
-                        <img className="inline-block h-7 w-7 rounded-full ring-2 ring-slate-900 object-cover" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&h=100&q=80" alt="Placed candidate" referrerPolicy="no-referrer" />
-                        <img className="inline-block h-7 w-7 rounded-full ring-2 ring-slate-900 object-cover" src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=100&h=100&q=80" alt="Placed candidate" referrerPolicy="no-referrer" />
+                    {/* Verified Placements & Real Photos Trust Indicator */}
+                    <div className="flex flex-wrap items-center gap-4 pt-3 text-xs text-slate-300">
+                      <div
+                        className="flex -space-x-2 items-center cursor-pointer group"
+                        onClick={() => setPlacedModalOpen(true)}
+                        title="Click to view verified placed candidates and authentic student photos"
+                      >
+                        {placedCandidates.slice(0, 4).map((cand, idx) => (
+                          cand.imageUrl ? (
+                            <img
+                              key={cand.id}
+                              src={cand.imageUrl}
+                              alt={cand.name}
+                              className="inline-block h-8 w-8 rounded-full ring-2 ring-slate-900 object-cover shadow-sm group-hover:scale-105 transition-transform"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div
+                              key={cand.id}
+                              className={`inline-flex h-8 w-8 rounded-full ring-2 ring-slate-900 items-center justify-center text-[10px] font-bold text-white shadow-xs group-hover:scale-105 transition-transform ${
+                                idx === 0 ? 'bg-blue-600' : idx === 1 ? 'bg-emerald-600' : idx === 2 ? 'bg-indigo-600' : 'bg-purple-600'
+                              }`}
+                            >
+                              {cand.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                            </div>
+                          )
+                        ))}
                       </div>
-                      <span className="text-slate-300 font-medium">
-                        Joined by <strong className="text-white font-geometric-mono">500+</strong> candidates placed across 32+ verified tech leaders
-                      </span>
+
+                      <div className="flex items-center space-x-2">
+                        <span className="text-slate-300">
+                          Joined by <strong className="text-white font-geometric-mono">{placedCandidates.length}+ verified candidates</strong> placed at TCS, Tech Mahindra, Mindtree & GIFT Campus drives
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setPlacedModalOpen(true)}
+                          className="text-xs text-blue-400 hover:text-blue-300 font-bold underline underline-offset-2 shrink-0 cursor-pointer"
+                        >
+                          View Placements →
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('hireai')}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/40 text-purple-200 hover:text-white text-[11px] font-bold transition-all cursor-pointer shadow-xs ml-auto sm:ml-0"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                        <span>Try HireAI Matcher</span>
+                      </button>
                     </div>
                   </div>
 
@@ -1307,9 +1523,145 @@ export function App() {
             companies={companies}
             onApproveJob={handleApproveJob}
             onCloseJob={handleCloseJob}
+            placedCandidates={placedCandidates}
+            onAddPlacedCandidate={async (newCand) => {
+              const res = await fetch('/api/placed-candidates', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newCand)
+              });
+              const data = await res.json();
+              if (data.candidate) {
+                setPlacedCandidates(prev => [data.candidate, ...prev]);
+                showToast(`Published placed candidate profile for ${data.candidate.name}`);
+              }
+            }}
+            onUpdatePlacedCandidate={async (id, updates) => {
+              const res = await fetch(`/api/placed-candidates/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+              });
+              const data = await res.json();
+              if (data.candidate) {
+                setPlacedCandidates(prev => prev.map(c => c.id === id ? data.candidate : c));
+                showToast(`Updated placement record for ${data.candidate.name}`);
+              }
+            }}
+            onDeletePlacedCandidate={async (id) => {
+              await fetch(`/api/placed-candidates/${id}`, { method: 'DELETE' });
+              setPlacedCandidates(prev => prev.filter(c => c.id !== id));
+              showToast('Candidate record removed.');
+            }}
+          />
+        )}
+
+        {/* TAB: COURSE LEARNING HUB */}
+        {activeTab === 'courses' && (
+          <CourseLearningHub
+            courses={courses}
+            liveClasses={liveClasses}
+            currentUser={currentUser}
+            onNavigateToJobs={() => setActiveTab('jobs')}
+            onNavigateToAssessment={() => setActiveTab('assessment')}
+          />
+        )}
+
+        {/* TAB: PRACTICE LAB & SKILL ASSESSMENT */}
+        {activeTab === 'assessment' && (
+          <SkillAssessmentLab
+            questions={assessmentQuestions}
+            codingProblems={codingProblems}
+            currentUser={currentUser}
+            onNavigateToCourses={() => setActiveTab('courses')}
+            onNavigateToJobs={() => setActiveTab('jobs')}
+          />
+        )}
+
+        {/* TAB: PLACEMENT TRACKER & DRIVES */}
+        {activeTab === 'placement-tracker' && (
+          <PlacementTrackerHub
+            drives={placementDrives}
+            applications={applicationTrackers}
+            currentUser={currentUser}
+            onNavigateToAssessment={() => setActiveTab('assessment')}
+            onNavigateToCourses={() => setActiveTab('courses')}
+          />
+        )}
+
+        {/* TAB: JOBSKUL HIREAI PARTNER / PARTNERSHIP TEAM DASHBOARD */}
+        {activeTab === 'hireai-partner' && (
+          <JobskulHireAIPartnerDashboard
+            currentUser={currentUser}
+            positions={partnerPositions}
+            jdRequests={jdRequests}
+            interviews={partnerInterviews}
+            candidates={users}
+            applications={applications}
+            onAddPosition={handleAddPartnerPosition}
+            onUpdatePosition={handleUpdatePartnerPosition}
+            onAddJDRequest={handleAddJDRequest}
+            onUpdateJDRequest={handleUpdateJDRequest}
+            onConvertJDToPosition={handleConvertJDToPosition}
+            onScheduleInterview={handleSchedulePartnerInterview}
+            onUpdateInterview={handleUpdatePartnerInterview}
+            onNavigateHome={() => setActiveTab('home')}
+            onLogout={() => {
+              setCurrentUser(null);
+              localStorage.removeItem('jobskul_auth_user');
+              localStorage.removeItem('jobskul_auth_token');
+              setActiveTab('home');
+              showToast('Signed out successfully.');
+            }}
+          />
+        )}
+
+        {/* TAB: AI CAREER ASSISTANT */}
+        {activeTab === 'ai-career' && (
+          <AICareerAssistant
+            currentUser={currentUser}
+            onNavigateToCourses={() => setActiveTab('courses')}
+            onNavigateToJobs={() => setActiveTab('jobs')}
+          />
+        )}
+
+        {/* TAB: MENTORSHIP & FORUM */}
+        {(activeTab === 'mentorship' || activeTab === 'community') && (
+          <MentorshipCommunityHub
+            mentors={mentors}
+            forumTopics={forumTopics}
+            currentUser={currentUser}
+          />
+        )}
+
+        {/* TAB: COLLEGE TPO PORTAL */}
+        {activeTab === 'college-portal' && (
+          <CollegePortal
+            currentUser={currentUser}
+            drives={placementDrives}
+            onAddDrive={(newDrive) => setPlacementDrives([newDrive, ...placementDrives])}
+          />
+        )}
+
+        {/* TAB: PRICING & PRO PASS */}
+        {activeTab === 'pricing' && (
+          <PaymentsSubscriptions
+            paymentHistory={paymentHistory}
+            currentUser={currentUser}
           />
         )}
       </main>
+
+      {/* PLACED CANDIDATES & HALL OF FAME MODAL */}
+      <PlacedCandidatesModal
+        isOpen={placedModalOpen}
+        onClose={() => setPlacedModalOpen(false)}
+        candidates={placedCandidates}
+        onOpenAdminPlacement={() => {
+          setPlacedModalOpen(false);
+          setActiveTab('admin');
+        }}
+      />
 
       {/* JOB DETAILS MODAL */}
       {activeJobForModal && (
@@ -1373,7 +1725,7 @@ export function App() {
       {/* FLOATING QA SYSTEM TEST SUITE BUTTON */}
       <button
         onClick={() => setTestRunnerOpen(true)}
-        className="fixed bottom-6 left-6 z-40 px-3.5 py-2.5 bg-[#0F172A] hover:bg-[#2563EB] text-white text-xs font-bold rounded-xl shadow-xl border border-slate-700/80 flex items-center space-x-2 transition-all hover:scale-105 cursor-pointer group"
+        className="fixed bottom-6 left-6 z-30 px-3.5 py-2.5 bg-[#0F172A] hover:bg-[#2563EB] text-white text-xs font-bold rounded-xl shadow-xl border border-slate-700/80 flex items-center space-x-2 transition-all hover:scale-105 cursor-pointer group"
         title="Open End-to-End System Test Suite to verify all search & application workflows"
       >
         <ShieldCheck className="w-4 h-4 text-emerald-400 group-hover:text-white transition-colors" />

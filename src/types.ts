@@ -1,4 +1,4 @@
-export type UserRole = 'candidate' | 'recruiter' | 'admin';
+export type UserRole = 'candidate' | 'recruiter' | 'admin' | 'partner' | 'college';
 
 export interface User {
   id: string;
@@ -26,6 +26,15 @@ export interface User {
   noticePeriod?: string;
   workPreference?: 'Remote' | 'Hybrid' | 'Work from office' | 'Flexible';
   profileCompletion?: number;
+  organization?: string;
+  team?: string;
+  partnerRole?: 'Super Admin' | 'Partnerships Team' | 'Recruiter' | 'Hiring Manager' | 'Viewer';
+  cgpa?: number;
+  collegeName?: string;
+  graduationYear?: number;
+  points?: number;
+  streakDays?: number;
+  badges?: string[];
 }
 
 export type EmploymentType = 'Full-time' | 'Part-time' | 'Contract' | 'Internship' | 'Traineeship';
@@ -292,3 +301,302 @@ export interface ContactMessage {
   message: string;
   createdAt: string;
 }
+
+export interface PlacedCandidate {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  company: string;
+  companyLogo?: string;
+  role: string;
+  packageLPA: string;
+  college: string;
+  batch: string;
+  skills: string[];
+  story?: string;
+  placedDate: string;
+  featuredInHero?: boolean;
+  verified: boolean;
+}
+
+// --- COURSE & LEARNING TYPES ---
+export interface CourseLesson {
+  id: string;
+  title: string;
+  duration: string;
+  videoUrl?: string;
+  videoEmbed?: string;
+  pdfNotesUrl?: string;
+  summary: string;
+  completed?: boolean;
+}
+
+export interface CourseModule {
+  id: string;
+  title: string;
+  duration: string;
+  lessons: CourseLesson[];
+  quiz?: {
+    id: string;
+    title: string;
+    questionsCount: number;
+    passingScore: number;
+  };
+  assignment?: {
+    id: string;
+    title: string;
+    instructions: string;
+    starterCode?: string;
+    dueDays: number;
+  };
+}
+
+export interface CourseItem {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels';
+  rating: number;
+  reviewsCount: number;
+  enrolledCount: number;
+  instructor: {
+    name: string;
+    role: string;
+    avatar: string;
+    company: string;
+  };
+  price: number;
+  originalPrice: number;
+  durationHours: number;
+  lessonsCount: number;
+  thumbnail: string;
+  tags: string[];
+  description: string;
+  learningOutcomes: string[];
+  modules: CourseModule[];
+  hasLiveClasses?: boolean;
+  certificateEligible: boolean;
+}
+
+export interface LiveClassSession {
+  id: string;
+  courseTitle: string;
+  topic: string;
+  instructor: string;
+  instructorAvatar: string;
+  date: string;
+  time: string;
+  status: 'upcoming' | 'live' | 'completed';
+  meetingUrl: string;
+  recordingUrl?: string;
+  attendeesCount: number;
+}
+
+// --- SKILL ASSESSMENT & PRACTICE LAB TYPES ---
+export interface AssessmentQuestion {
+  id: string;
+  question: string;
+  codeSnippet?: string;
+  options: string[];
+  correctOptionIndex: number;
+  explanation: string;
+  category: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+}
+
+export interface CodingProblem {
+  id: string;
+  title: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  category: string;
+  acceptanceRate: string;
+  description: string;
+  starterCode: {
+    javascript: string;
+    python: string;
+    sql?: string;
+  };
+  sampleTestCases: {
+    input: string;
+    expectedOutput: string;
+  }[];
+  hints: string[];
+}
+
+export interface SkillGapAnalysis {
+  targetRole: string;
+  readinessScore: number;
+  strongSkills: { skill: string; score: number }[];
+  gapSkills: { skill: string; currentScore: number; requiredScore: number; recommendedCourse: string }[];
+  aiAdvice: string;
+}
+
+// --- PLACEMENT DRIVE & TRACKING ---
+export interface PlacementDrive {
+  id: string;
+  companyName: string;
+  companyLogo?: string;
+  role: string;
+  driveType: 'Campus Drive' | 'Off-Campus Drive' | 'Pool Drive' | 'Referral';
+  packageLPA: string;
+  location: string;
+  minCGPA: number;
+  eligibleBatches: string[];
+  deadline: string;
+  driveDate: string;
+  openings: number;
+  registeredCount: number;
+  hiringProcess: string[];
+  skillsRequired: string[];
+  status: 'Upcoming' | 'Registration Open' | 'Ongoing' | 'Completed';
+}
+
+export interface StudentPlacementStage {
+  stage: 'Applied' | 'Shortlisted' | 'Assessment Test' | 'Technical Round 1' | 'HR Interview' | 'Offer Issued' | 'Rejected';
+  completed: boolean;
+  current: boolean;
+  date?: string;
+  score?: string;
+  notes?: string;
+}
+
+export interface ApplicationTrackerItem {
+  id: string;
+  company: string;
+  role: string;
+  appliedDate: string;
+  currentStage: string;
+  packageLPA: string;
+  stages: StudentPlacementStage[];
+  nextAction?: string;
+  actionDeadline?: string;
+}
+
+// --- PARTNER / JOBSKUL HIREAI RECRUITMENT TYPES ---
+export type PartnerPositionStatus = 'Draft' | 'Open' | 'On Hold' | 'Closed' | 'Archived';
+export type JDRequestStatus = 'Pending' | 'In Review' | 'Approved' | 'Rejected' | 'Completed';
+
+export interface PartnerPosition {
+  id: string;
+  jobId: string;
+  title: string;
+  company: string;
+  department: string;
+  location: string;
+  employmentType: EmploymentType;
+  experience: string;
+  salaryRange: string;
+  skills: string[];
+  description: string;
+  responsibilities: string[];
+  qualifications: string[];
+  benefits: string[];
+  openings: number;
+  status: PartnerPositionStatus;
+  createdDate: string;
+  deadline: string;
+  assignedRecruiter: string;
+  applicantsCount: number;
+  shortlistedCount: number;
+  interviewCount: number;
+}
+
+export interface JDRequest {
+  id: string;
+  requestNumber: string;
+  clientName: string;
+  jobTitle: string;
+  department: string;
+  location: string;
+  experienceRequired: string;
+  salaryMin: number;
+  salaryMax: number;
+  openings: number;
+  requiredSkills: string[];
+  jobDescription: string;
+  responsibilities: string;
+  status: JDRequestStatus;
+  requestedBy: string;
+  assignedTo?: string;
+  createdDate: string;
+  approvedDate?: string;
+  convertedPositionId?: string;
+  feedback?: string;
+}
+
+export interface PartnerInterview {
+  id: string;
+  candidateName: string;
+  candidateEmail: string;
+  candidatePhone?: string;
+  positionTitle: string;
+  company: string;
+  interviewerName: string;
+  date: string;
+  time: string;
+  interviewType: 'Technical' | 'HR' | 'System Design' | 'Managerial';
+  meetingLink: string;
+  status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled' | 'No Show';
+  notes?: string;
+  feedback?: string;
+  rating?: number;
+}
+
+// --- MENTORSHIP & COMMUNITY TYPES ---
+export interface Mentor {
+  id: string;
+  name: string;
+  avatar: string;
+  role: string;
+  company: string;
+  experienceYears: number;
+  expertise: string[];
+  hourlyRate: string;
+  rating: number;
+  sessionsCompleted: number;
+  bio: string;
+  availableDays: string[];
+}
+
+export interface ForumTopic {
+  id: string;
+  title: string;
+  category: 'Tech Doubts' | 'LeetCode & DSA' | 'Interview Experiences' | 'Resume Review' | 'Alumni Network';
+  author: {
+    name: string;
+    avatar?: string;
+    role: string;
+    college?: string;
+  };
+  content: string;
+  tags: string[];
+  createdAt: string;
+  upvotes: number;
+  repliesCount: number;
+  isSolved: boolean;
+  replies?: {
+    id: string;
+    author: string;
+    role: string;
+    avatar?: string;
+    text: string;
+    createdAt: string;
+    isAcceptedSolution?: boolean;
+  }[];
+}
+
+// --- PAYMENTS & BILLING ---
+export interface PaymentHistoryItem {
+  id: string;
+  invoiceNumber: string;
+  date: string;
+  description: string;
+  planOrCourse: string;
+  amount: number;
+  tax: number;
+  total: number;
+  status: 'Paid' | 'Processing' | 'Refunded';
+  pdfDownloadUrl?: string;
+}
+

@@ -28,7 +28,8 @@ import {
   ArrowRight,
   UserCheck,
   Share2,
-  Sparkles
+  Sparkles,
+  Award
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -99,11 +100,25 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, []);
 
-  // Close mobile menu on desktop window resize
+  // Prevent body scroll and background bleed-through when mobile navigation drawer is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
+  // Close mobile menu and search modals on desktop window resize
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1280) {
         setMobileMenuOpen(false);
+        setQuickSearchOpen(false);
+        document.body.style.overflow = '';
       }
     };
     window.addEventListener('resize', handleResize);
@@ -133,24 +148,24 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full max-w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-[72px] gap-2 sm:gap-4">
+      <div className="max-w-[1600px] w-full mx-auto px-3 sm:px-4 lg:px-6">
+        <div className="flex items-center justify-between h-16 sm:h-[72px] gap-2 lg:gap-3 2xl:gap-4">
           {/* Logo & Main Navigation */}
-          <div className="flex items-center space-x-2 xl:space-x-4 min-w-0">
+          <div className="flex items-center space-x-1.5 xl:space-x-2 2xl:space-x-3 min-w-0">
             <div
               onClick={() => handleNavClick('home')}
               className="cursor-pointer shrink-0 transition-opacity hover:opacity-90 flex items-center"
               id="header-brand-logo"
             >
-              <Logo size="md" className="h-8 sm:h-9.5 w-auto" />
+              <Logo size="md" className="h-8 sm:h-9 w-auto" />
             </div>
 
             {/* Desktop Navigation Links (>= 1280px / xl) */}
-            <nav className="hidden xl:flex items-center space-x-0.5 2xl:space-x-1">
+            <nav className="hidden xl:flex items-center space-x-0.5 2xl:space-x-1 shrink min-w-0">
               <button
                 id="nav-home"
                 onClick={() => handleNavClick('home')}
-                className={`px-2.5 2xl:px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-2 2xl:px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'home'
                     ? 'text-blue-600 bg-blue-50/90 border border-blue-200/70 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
@@ -162,7 +177,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="nav-jobs"
                 onClick={() => handleNavClick('jobs')}
-                className={`px-2.5 2xl:px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-2 2xl:px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'jobs'
                     ? 'text-blue-600 bg-blue-50/90 border border-blue-200/70 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
@@ -172,9 +187,51 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
 
               <button
+                id="nav-courses"
+                onClick={() => handleNavClick('courses')}
+                className={`px-2 2xl:px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center space-x-1 ${
+                  activeTab === 'courses'
+                    ? 'text-blue-600 bg-blue-50/90 border border-blue-200/70 font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="hidden 2xl:inline">Courses & Live</span>
+                <span className="2xl:hidden">Courses</span>
+              </button>
+
+              <button
+                id="nav-assessment"
+                onClick={() => handleNavClick('assessment')}
+                className={`px-2 2xl:px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center space-x-1 ${
+                  activeTab === 'assessment'
+                    ? 'text-blue-600 bg-blue-50/90 border border-blue-200/70 font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
+                }`}
+              >
+                <Target className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="hidden 2xl:inline">Practice Lab</span>
+                <span className="2xl:hidden">Practice</span>
+              </button>
+
+              <button
+                id="nav-placement-tracker"
+                onClick={() => handleNavClick('placement-tracker')}
+                className={`px-2 2xl:px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center space-x-1 ${
+                  activeTab === 'placement-tracker'
+                    ? 'text-emerald-700 bg-emerald-50 border border-emerald-300 font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="hidden 2xl:inline">Placement Drives</span>
+                <span className="2xl:hidden">Drives</span>
+              </button>
+
+              <button
                 id="nav-companies"
                 onClick={() => handleNavClick('companies')}
-                className={`px-2.5 2xl:px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-2 2xl:px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'companies'
                     ? 'text-blue-600 bg-blue-50/90 border border-blue-200/70 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
@@ -183,16 +240,22 @@ export const Header: React.FC<HeaderProps> = ({
                 Companies
               </button>
 
+              {/* HireAI Partner Panel Link */}
               <button
-                id="nav-candidates"
-                onClick={() => handleNavClick('candidates')}
-                className={`px-2.5 2xl:px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'candidates'
-                    ? 'text-blue-600 bg-blue-50/90 border border-blue-200/70 font-bold shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
+                id="nav-hireai-partner"
+                onClick={() => handleNavClick('hireai-partner')}
+                className={`flex items-center space-x-1 px-2 2xl:px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'hireai-partner'
+                    ? 'text-purple-700 bg-purple-50 border border-purple-300/80 font-bold shadow-2xs'
+                    : 'text-purple-700 hover:bg-purple-50/60 border border-transparent font-bold'
                 }`}
+                title="JobskulHireAI Partner & Recruitment Team Dashboard"
               >
-                Candidates
+                <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-pulse shrink-0" />
+                <span>JobskulHireAI</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-700 text-[9px] font-bold">
+                  Partner
+                </span>
               </button>
 
               {/* Career Tools Dropdown */}
@@ -204,18 +267,18 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   id="nav-tools-dropdown"
                   onClick={() => handleNavClick('resume')}
-                  className={`flex items-center space-x-1 px-2.5 2xl:px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    activeTab === 'resume' || activeTab === 'hireai'
+                  className={`flex items-center space-x-1 px-2 2xl:px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                    activeTab === 'resume' || activeTab === 'ai-career' || activeTab === 'mentorship' || activeTab === 'community' || activeTab === 'college-portal' || activeTab === 'pricing'
                       ? 'text-blue-600 bg-blue-50/90 border border-blue-200/70 font-bold shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
                   }`}
                 >
-                  <span>Career Tools</span>
-                  <ChevronDown className="w-3.5 h-3.5 ml-0.5 text-slate-400" />
+                  <span>Student Hub</span>
+                  <ChevronDown className="w-3 h-3 ml-0.5 text-slate-400 shrink-0" />
                 </button>
 
                 {toolsDropdownOpen && (
-                  <div className="absolute top-full left-0 w-72 bg-white rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-200/80 p-2 space-y-1 animate-in fade-in slide-in-from-top-1 z-50">
+                  <div className="absolute top-full left-0 w-80 bg-white rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-200/80 p-2 space-y-1 animate-in fade-in slide-in-from-top-1 z-50">
                     <button
                       onClick={() => handleNavClick('resume')}
                       className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 flex items-start space-x-3 transition-colors cursor-pointer"
@@ -235,15 +298,54 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
 
                     <button
-                      onClick={() => handleNavClick('hireai')}
+                      onClick={() => handleNavClick('ai-career')}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 flex items-start space-x-3 transition-colors cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-900">AI Career Assistant & Chatbot</p>
+                        <p className="text-[11px] text-slate-500">Personalized path & live interview coach</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleNavClick('mentorship')}
                       className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 flex items-start space-x-3 transition-colors cursor-pointer"
                     >
                       <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                        <Target className="w-4 h-4" />
+                        <Users className="w-4 h-4" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-900">Skill Assessment & Prep</p>
-                        <p className="text-[11px] text-slate-500">Role gap evaluation & technical prep</p>
+                        <p className="text-xs font-bold text-slate-900">1-on-1 Mentorship & Community</p>
+                        <p className="text-[11px] text-slate-500">Book sessions with FAANG architects & discuss doubts</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleNavClick('college-portal')}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 flex items-start space-x-3 transition-colors cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                        <GraduationCap className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-900">College & TPO Placement Portal</p>
+                        <p className="text-[11px] text-slate-500">Institutional campus drives & reports</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleNavClick('pricing')}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 flex items-start space-x-3 transition-colors cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                        <Award className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-900">Pro Career Pass & Invoices</p>
+                        <p className="text-[11px] text-slate-500">All courses access + coupons & tax invoices</p>
                       </div>
                     </button>
                   </div>
@@ -259,14 +361,14 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   id="nav-services-dropdown"
                   onClick={() => handleNavClick('services')}
-                  className={`flex items-center space-x-1 px-2.5 2xl:px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                  className={`flex items-center space-x-1 px-2 2xl:px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                     activeTab.startsWith('services')
                       ? 'text-blue-600 bg-blue-50/90 border border-blue-200/70 font-bold shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
                   }`}
                 >
                   <span>Services</span>
-                  <ChevronDown className="w-3.5 h-3.5 ml-0.5 text-slate-400" />
+                  <ChevronDown className="w-3 h-3 ml-0.5 text-slate-400 shrink-0" />
                 </button>
 
                 {servicesDropdownOpen && (
@@ -321,18 +423,25 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <button
                   id="nav-more-dropdown"
-                  className={`flex items-center space-x-1 px-2.5 2xl:px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    ['blog', 'faq', 'team', 'gallery', 'contact'].includes(activeTab)
+                  className={`flex items-center space-x-1 px-2 2xl:px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                    ['blog', 'faq', 'team', 'gallery', 'contact', 'candidates'].includes(activeTab)
                       ? 'text-blue-600 bg-blue-50/90 border border-blue-200/70 font-bold shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
                   }`}
                 >
                   <span>Company</span>
-                  <ChevronDown className="w-3.5 h-3.5 ml-0.5 text-slate-400" />
+                  <ChevronDown className="w-3 h-3 ml-0.5 text-slate-400 shrink-0" />
                 </button>
 
                 {moreDropdownOpen && (
-                  <div className="absolute top-full left-0 w-60 bg-white rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-200/80 p-2 space-y-0.5 animate-in fade-in slide-in-from-top-1 z-50">
+                  <div className="absolute top-full left-0 w-64 bg-white rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-200/80 p-2 space-y-0.5 animate-in fade-in slide-in-from-top-1 z-50">
+                    <button
+                      onClick={() => handleNavClick('candidates')}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 rounded-lg flex items-center space-x-2.5 cursor-pointer"
+                    >
+                      <Users className="w-4 h-4 text-emerald-600" />
+                      <span>Candidates Directory</span>
+                    </button>
                     <button
                       onClick={() => handleNavClick('blog')}
                       className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 rounded-lg flex items-center space-x-2.5 cursor-pointer"
@@ -375,15 +484,15 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Desktop Right Action & User Controls (>= 1280px / xl) */}
-          <div className="hidden xl:flex items-center space-x-2 2xl:space-x-3 shrink-0">
+          <div className="hidden xl:flex items-center space-x-1.5 2xl:space-x-2.5 shrink-0">
             {/* Quick Search Trigger Pill */}
             <button
               id="header-search-btn"
               onClick={() => setQuickSearchOpen(true)}
-              className="flex items-center space-x-1.5 2xl:space-x-2 px-2.5 2xl:px-3 py-1.5 bg-slate-100/80 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/80 rounded-xl text-xs font-medium transition-all group cursor-pointer"
+              className="flex items-center space-x-1 px-2 2xl:px-2.5 py-1.5 bg-slate-100/80 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/80 rounded-xl text-xs font-medium transition-all group cursor-pointer"
               title="Quick Search (⌘K)"
             >
-              <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-colors" />
+              <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" />
               <span className="text-[11px] hidden 2xl:inline">Quick Search</span>
               <kbd className="font-geometric-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-white text-slate-400 border border-slate-200 shadow-2xs">
                 ⌘K
@@ -395,12 +504,12 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="header-promote-btn"
                 onClick={onOpenPromote}
-                className="flex items-center space-x-1.5 px-2.5 2xl:px-3 py-1.5 bg-amber-50 hover:bg-amber-100/90 text-amber-900 border border-amber-200/90 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                className="flex items-center space-x-1 px-2 2xl:px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100/90 text-amber-900 border border-amber-200/90 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
                 title="Promote Jobskül & Request College Placement Drive"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 <span className="text-[11px] hidden 2xl:inline">Promote & Share</span>
-                <span className="text-[11px] 2xl:hidden">Share</span>
+                <span className="text-[11px] hidden xl:inline 2xl:hidden">Share</span>
               </button>
             )}
 
@@ -409,18 +518,19 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="header-post-job-btn"
                 onClick={() => handleNavClick('recruiter-post')}
-                className="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 2xl:px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs hover:shadow transition-all cursor-pointer whitespace-nowrap"
+                className="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white px-2.5 2xl:px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs hover:shadow transition-all cursor-pointer whitespace-nowrap"
               >
-                <PlusCircle className="w-3.5 h-3.5" />
+                <PlusCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>Post a Job</span>
               </button>
             ) : (
               <button
                 id="header-employer-cta-btn"
                 onClick={() => onSwitchUser('recruiter')}
-                className="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100/80 border border-blue-200/80 px-2.5 2xl:px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap"
+                className="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100/80 border border-blue-200/80 px-2 2xl:px-2.5 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap"
               >
-                For Employers
+                <span className="hidden 2xl:inline">For Employers</span>
+                <span className="2xl:hidden">Employers</span>
               </button>
             )}
 
@@ -430,12 +540,12 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   id="notifications-toggle-btn"
                   onClick={() => setNotificationsOpen(!notificationsOpen)}
-                  className="relative p-2 text-[#64748B] hover:text-[#2563EB] hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-[#E2E8F0] cursor-pointer"
+                  className="relative p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200 cursor-pointer"
                   aria-label="Notifications"
                 >
-                  <Bell className="w-4 h-4" />
+                  <Bell className="w-4 h-4 shrink-0" />
                   {unreadNotificationsCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
                   )}
                 </button>
 
@@ -466,16 +576,16 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   id="user-profile-menu-btn"
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center space-x-2 p-1.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl transition-all cursor-pointer"
+                  className="flex items-center space-x-1.5 p-1 2xl:p-1.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl transition-all cursor-pointer"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-2xs">
+                  <div className="w-7 h-7 2xl:w-8 2xl:h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-2xs shrink-0">
                     {currentUser.name.charAt(0)}
                   </div>
-                  <div className="text-left pr-1">
-                    <p className="text-xs font-bold text-slate-900 leading-none truncate max-w-[100px]">{currentUser.name}</p>
-                    <p className="text-[10px] text-slate-500 uppercase font-geometric-mono mt-0.5">{currentUser.role}</p>
+                  <div className="text-left pr-1 hidden sm:block">
+                    <p className="text-xs font-bold text-slate-900 leading-none truncate max-w-[75px] 2xl:max-w-[110px]">{currentUser.name}</p>
+                    <p className="text-[10px] text-slate-500 uppercase font-geometric-mono mt-0.5 truncate max-w-[75px] 2xl:max-w-[110px]">{currentUser.role}</p>
                   </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                 </button>
 
                 {/* Profile Dropdown Menu */}
@@ -490,6 +600,32 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
 
                     <div className="space-y-0.5">
+                      {currentUser.role === 'partner' && (
+                        <>
+                          <button
+                            onClick={() => handleNavClick('hireai-partner')}
+                            className="w-full text-left px-2.5 py-1.5 text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg flex items-center space-x-2 font-bold transition-colors cursor-pointer"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                            <span>Partner Dashboard</span>
+                          </button>
+                          <button
+                            onClick={() => handleNavClick('hireai-partner')}
+                            className="w-full text-left px-2.5 py-1.5 text-xs text-slate-800 hover:bg-slate-100 rounded-lg flex items-center space-x-2 transition-colors cursor-pointer"
+                          >
+                            <Briefcase className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Positions & JD Requests</span>
+                          </button>
+                          <button
+                            onClick={() => handleNavClick('hireai-partner')}
+                            className="w-full text-left px-2.5 py-1.5 text-xs text-slate-800 hover:bg-slate-100 rounded-lg flex items-center space-x-2 transition-colors cursor-pointer"
+                          >
+                            <Users className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Candidate Pool & Interviews</span>
+                          </button>
+                        </>
+                      )}
+
                       {currentUser.role === 'candidate' && (
                         <>
                           <button
@@ -529,10 +665,18 @@ export const Header: React.FC<HeaderProps> = ({
                       )}
 
                       <button
-                        onClick={() => handleNavClick('admin')}
-                        className="w-full text-left px-2.5 py-1.5 text-xs text-purple-700 bg-purple-50/60 hover:bg-purple-100/70 rounded-lg flex items-center space-x-2 font-bold transition-colors cursor-pointer"
+                        onClick={() => handleNavClick('hireai-partner')}
+                        className="w-full text-left px-2.5 py-1.5 text-xs text-purple-700 hover:bg-purple-50 rounded-lg flex items-center space-x-2 font-bold transition-colors cursor-pointer"
                       >
-                        <Shield className="w-3.5 h-3.5 text-purple-600" />
+                        <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                        <span>JobskulHireAI Partner Panel</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleNavClick('admin')}
+                        className="w-full text-left px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-100 rounded-lg flex items-center space-x-2 font-bold transition-colors cursor-pointer"
+                      >
+                        <Shield className="w-3.5 h-3.5 text-slate-600" />
                         <span>Admin Panel</span>
                       </button>
                     </div>
@@ -545,7 +689,15 @@ export const Header: React.FC<HeaderProps> = ({
                           currentUser.role === 'candidate' ? 'font-bold text-blue-700 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'
                         }`}
                       >
-                        Priya Sharma (Candidate)
+                        Priya Sharma (Candidate / Student)
+                      </button>
+                      <button
+                        onClick={() => { onSwitchUser('partner' as any); setUserDropdownOpen(false); }}
+                        className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg transition-colors cursor-pointer ${
+                          currentUser.role === 'partner' ? 'font-bold text-purple-700 bg-purple-50' : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        Partnerships Team (Super Admin)
                       </button>
                       <button
                         onClick={() => { onSwitchUser('recruiter'); setUserDropdownOpen(false); }}
@@ -554,6 +706,14 @@ export const Header: React.FC<HeaderProps> = ({
                         }`}
                       >
                         Arun Mehta (Recruiter)
+                      </button>
+                      <button
+                        onClick={() => { onSwitchUser('college' as any); setUserDropdownOpen(false); }}
+                        className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg transition-colors cursor-pointer ${
+                          currentUser.role === 'college' ? 'font-bold text-indigo-700 bg-indigo-50' : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        Prof. Senapati (College TPO)
                       </button>
                       <button
                         onClick={() => { onSwitchUser('admin'); setUserDropdownOpen(false); }}
@@ -826,6 +986,59 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
 
               <button
+                onClick={() => handleNavClick('courses')}
+                className={`p-3 rounded-xl text-left flex items-center space-x-2 transition-all cursor-pointer ${
+                  activeTab === 'courses'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200/70'
+                }`}
+              >
+                <BookOpen className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="truncate">Courses & Live</span>
+              </button>
+
+              <button
+                onClick={() => handleNavClick('assessment')}
+                className={`p-3 rounded-xl text-left flex items-center space-x-2 transition-all cursor-pointer ${
+                  activeTab === 'assessment'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200/70'
+                }`}
+              >
+                <Target className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="truncate">Practice Lab</span>
+              </button>
+
+              <button
+                onClick={() => handleNavClick('placement-tracker')}
+                className={`p-3 rounded-xl text-left flex items-center space-x-2 transition-all cursor-pointer ${
+                  activeTab === 'placement-tracker'
+                    ? 'bg-emerald-700 text-white shadow-xs'
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/70'
+                }`}
+              >
+                <Briefcase className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="truncate font-bold">Placement Drives</span>
+              </button>
+
+              <button
+                onClick={() => handleNavClick('hireai-partner')}
+                className={`p-3 rounded-xl text-left flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === 'hireai-partner'
+                    ? 'bg-purple-700 text-white shadow-xs'
+                    : 'bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200/80 font-bold'
+                }`}
+              >
+                <div className="flex items-center space-x-2 truncate">
+                  <Sparkles className="w-4 h-4 text-purple-600 shrink-0 animate-pulse" />
+                  <span className="truncate">JobskulHireAI</span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded bg-purple-200 text-purple-800 text-[10px] font-bold shrink-0 ml-1">
+                  Partner
+                </span>
+              </button>
+
+              <button
                 onClick={() => handleNavClick('resume')}
                 className={`p-3 rounded-xl text-left flex items-center justify-between transition-all cursor-pointer ${
                   activeTab === 'resume'
@@ -846,14 +1059,17 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={() => handleNavClick('hireai')}
                 className={`p-3 rounded-xl text-left flex items-center justify-between transition-all cursor-pointer ${
                   activeTab === 'hireai'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200/70'
+                    ? 'bg-purple-700 text-white shadow-xs'
+                    : 'bg-purple-50/70 hover:bg-purple-100 text-purple-900 border border-purple-200/80'
                 }`}
               >
                 <div className="flex items-center space-x-2 truncate">
-                  <Target className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span className="truncate">Skill Assessment & Prep</span>
+                  <Sparkles className="w-4 h-4 text-purple-600 shrink-0 animate-pulse" />
+                  <span className="truncate font-bold">HireAI Candidate Match</span>
                 </div>
+                <span className="px-1.5 py-0.5 rounded bg-purple-200/80 text-purple-800 text-[10px] font-bold shrink-0 ml-1">
+                  AI
+                </span>
               </button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { JobListing, Company, ProjectLearning, User, JobApplication, CareerArticle } from '../types';
+import { JobListing, Company, ProjectLearning, User, JobApplication, CareerArticle, PlacedCandidate } from '../types';
 import { ALL_JOBS } from './allJobs';
 import {
   OFFICIAL_BLOG_ARTICLES,
@@ -916,3 +916,96 @@ def extract_resume_text(pdf_path: str) -> str:
 ];
 
 export const INITIAL_BLOG_POSTS: CareerArticle[] = OFFICIAL_BLOG_ARTICLES;
+
+export const INITIAL_PLACED_CANDIDATES: PlacedCandidate[] = [
+  {
+    id: 'placed-1',
+    name: 'Soumya Ranjan Parida',
+    imageUrl: '', // Ready for Admin to post/upload real candidate image; clean initial avatar used until uploaded
+    company: 'Tech Mahindra',
+    role: 'Associate Software Engineer',
+    packageLPA: '₹6.50 LPA',
+    college: 'Gandhi Institute For Technology (GIFT Autonomous), Bhubaneswar',
+    batch: '2025',
+    skills: ['Python', 'Django', 'REST APIs', 'PostgreSQL', 'Git'],
+    story: 'Secured placement via Jobskül Campus Drive after completing the Full-Stack Python capstone assessment.',
+    placedDate: '2026-08-15',
+    featuredInHero: true,
+    verified: true
+  },
+  {
+    id: 'placed-2',
+    name: 'Priya Sharma',
+    imageUrl: '',
+    company: 'CloudSphere Technologies',
+    role: 'Full Stack Engineer (React + Node)',
+    packageLPA: '₹9.20 LPA',
+    college: 'Silicon Institute of Technology, Bhubaneswar',
+    batch: '2024',
+    skills: ['React', 'TypeScript', 'Node.js', 'Docker', 'AWS'],
+    story: 'Hired directly through Jobskül verified employer pooled drive after clearing the ATS screening round.',
+    placedDate: '2026-07-28',
+    featuredInHero: true,
+    verified: true
+  },
+  {
+    id: 'placed-3',
+    name: 'Amit Kumar Nayak',
+    imageUrl: '',
+    company: 'Infosys Limited',
+    role: 'Systems Engineer - Cloud & DevOps',
+    packageLPA: '₹7.80 LPA',
+    college: 'Centurion University of Technology and Management',
+    batch: '2024',
+    skills: ['Linux', 'Docker', 'Kubernetes', 'CI/CD', 'Python'],
+    story: 'Prepared through Jobskül Institutional Placement training and cracked the National Qualifier.',
+    placedDate: '2026-08-02',
+    featuredInHero: true,
+    verified: true
+  },
+  {
+    id: 'placed-4',
+    name: 'Sneha Das',
+    imageUrl: '',
+    company: 'Mindtree / LTIMindtree',
+    role: 'Frontend UI/UX Engineer',
+    packageLPA: '₹7.20 LPA',
+    college: 'Odisha University of Technology and Research (OUTR), Bhubaneswar',
+    batch: '2025',
+    skills: ['React', 'Next.js', 'Tailwind CSS', 'Figma', 'Redux'],
+    story: 'Landed frontend engineering offer within 3 weeks of uploading verified projects on Jobskül.',
+    placedDate: '2026-08-20',
+    featuredInHero: true,
+    verified: true
+  },
+  {
+    id: 'placed-5',
+    name: 'Rakesh Mohanty',
+    imageUrl: '',
+    company: 'Tata Consultancy Services (TCS Digital)',
+    role: 'Software Developer (Digital Wing)',
+    packageLPA: '₹8.00 LPA',
+    college: 'KIIT Deemed to be University, Bhubaneswar',
+    batch: '2025',
+    skills: ['Java', 'Spring Boot', 'Microservices', 'MySQL'],
+    story: 'Achieved Digital band package after qualifying Jobskül mock coding evaluation assessments.',
+    placedDate: '2026-08-22',
+    featuredInHero: false,
+    verified: true
+  },
+  {
+    id: 'placed-6',
+    name: 'Subrat Rout',
+    imageUrl: '',
+    company: 'Deloitte USI',
+    role: 'Associate Analytics Consultant',
+    packageLPA: '₹11.50 LPA',
+    college: 'International Institute of Information Technology (IIIT), Bhubaneswar',
+    batch: '2024',
+    skills: ['Data Analysis', 'Python', 'PowerBI', 'SQL', 'Machine Learning'],
+    story: 'Selected during off-campus corporate hiring drive facilitated by Jobskül Corporate Relations.',
+    placedDate: '2026-06-18',
+    featuredInHero: false,
+    verified: true
+  }
+];

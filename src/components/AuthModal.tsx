@@ -13,7 +13,11 @@ import {
   RefreshCw,
   Sparkles,
   KeyRound,
-  AlertCircle
+  AlertCircle,
+  Info,
+  ExternalLink,
+  HelpCircle,
+  Server
 } from 'lucide-react';
 
 interface AuthModalProps {
@@ -42,6 +46,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [otpPreviewHelper, setOtpPreviewHelper] = useState<string | null>(null);
+  const [smtpDelivered, setSmtpDelivered] = useState(false);
+  const [deliveryMethod, setDeliveryMethod] = useState<'resend' | 'smtp' | 'outbox'>('outbox');
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const [showTechGuide, setShowTechGuide] = useState(false);
 
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -104,7 +112,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       setStep('otp');
       setResendCooldown(30);
-      setInfoMsg(`Verification code sent to ${cleanEmail}`);
+      setSmtpDelivered(Boolean(data.smtpDelivered));
+      setDeliveryMethod(data.deliveryMethod || (data.smtpDelivered ? 'smtp' : 'outbox'));
+      setDeliveryError(data.deliveryError || null);
+      setInfoMsg(data.message || `Verification code processed for ${cleanEmail}`);
       if (data.otpPreview) {
         setOtpPreviewHelper(data.otpPreview);
       }
@@ -233,7 +244,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
-      <div className="bg-white rounded-3xl border border-slate-200/90 max-w-md w-full p-6 sm:p-8 shadow-2xl shadow-slate-900/20 relative animate-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-3xl border border-slate-200/90 max-w-md w-full max-h-[92vh] overflow-y-auto p-5 sm:p-8 shadow-2xl shadow-slate-900/20 relative animate-in zoom-in-95 duration-150">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -244,7 +255,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </button>
 
         {/* Brand Header */}
-        <div className="text-center space-y-2 mb-6">
+        <div className="text-center space-y-2 mb-5">
           <div className="flex justify-center">
             <Logo size="md" />
           </div>
@@ -255,10 +266,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {step === 'success' && 'Authentication Successful!'}
             </h3>
             <p className="text-xs text-slate-500 max-w-xs mx-auto">
-              {step === 'email' && 'Enter your Gmail or work email to receive a secure 6-digit one-time code.'}
+              {step === 'email' && 'Enter your Gmail or college email to receive a secure 6-digit one-time code.'}
               {step === 'otp' && (
                 <span>
-                  Enter the 6-digit code sent to <strong className="text-slate-800">{email}</strong>
+                  Enter the 6-digit code sent to <strong className="text-slate-800 break-all">{email}</strong>
                 </span>
               )}
               {step === 'success' && 'Loading your Jobskül career workspace...'}
@@ -274,10 +285,63 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        {infoMsg && step === 'otp' && (
-          <div className="mb-4 p-2.5 bg-blue-50 text-blue-700 rounded-xl text-xs font-medium border border-blue-200/70 flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-blue-600" />
-            <span className="flex-1">{infoMsg}</span>
+        {/* STEP 2 DELIVERY STATUS BANNER */}
+        {step === 'otp' && (
+          <div className="mb-4 animate-in fade-in">
+            {smtpDelivered ? (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1">
+                <div className="flex items-center space-x-2 text-emerald-800 font-bold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Code Dispatched to Real Mailbox!</span>
+                </div>
+                <p className="text-[11px] text-emerald-700 pl-6">
+                  Delivered via <strong>{deliveryMethod === 'resend' ? 'Resend HTTPS API' : 'Google Mail Gateway'}</strong>. Please check your Inbox and Spam/Junk folders.
+                </p>
+              </div>
+            ) : (
+              <div className="p-3 bg-blue-50/90 border border-blue-200/80 rounded-xl text-xs space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start space-x-2 text-blue-900">
+                    <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-blue-900">Sandbox Preview Outbox Mode</span>
+                      <p className="text-[11px] text-blue-700 mt-0.5 leading-relaxed">
+                        To send real emails to <strong>{email}</strong>, an authenticated mail provider (Resend API or Gmail App Password) must be connected in Settings.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowTechGuide(true)}
+                    className="shrink-0 text-[10px] font-bold text-blue-700 hover:text-blue-900 underline cursor-pointer"
+                  >
+                    Tech Info
+                  </button>
+                </div>
+
+                {otpPreviewHelper && (
+                  <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between gap-2">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Your Code:</span>
+                      <span className="font-geometric-mono font-black text-blue-800 bg-white px-2 py-0.5 rounded-md border border-blue-200 tracking-wider text-sm shadow-2xs">
+                        {otpPreviewHelper}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const digits = otpPreviewHelper.split('').slice(0, 6);
+                        setOtpDigits(digits);
+                        triggerVerifyWithCode(otpPreviewHelper);
+                      }}
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-xs whitespace-nowrap"
+                    >
+                      Autofill & Verify
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -459,7 +523,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <label className="block text-center text-xs font-bold text-slate-700 mb-3">
                 Enter 6-Digit Code
               </label>
-              <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+              <div className="flex items-center justify-center gap-1 sm:gap-2">
                 {otpDigits.map((digit, idx) => (
                   <input
                     key={idx}
@@ -471,35 +535,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={digit}
                     onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(idx, e)}
-                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-black font-geometric-mono rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 bg-slate-50 focus:bg-white text-slate-900 transition-all"
+                    className="w-9 sm:w-11 h-12 sm:h-14 text-center text-base sm:text-xl font-black font-geometric-mono rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 bg-slate-50 focus:bg-white text-slate-900 transition-all shadow-2xs"
                   />
                 ))}
               </div>
             </div>
-
-            {/* Instant Helper Pill in dev preview */}
-            {otpPreviewHelper && (
-              <div className="p-2.5 bg-amber-50 border border-amber-200/80 rounded-xl flex items-center justify-between text-xs animate-in fade-in">
-                <div className="flex items-center space-x-1.5 text-amber-800">
-                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span className="font-semibold text-[11px]">Dev Verification Code:</span>
-                  <span className="font-geometric-mono font-bold tracking-widest text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded">
-                    {otpPreviewHelper}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const digits = otpPreviewHelper.split('').slice(0, 6);
-                    setOtpDigits(digits);
-                    triggerVerifyWithCode(otpPreviewHelper);
-                  }}
-                  className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[10px] transition-colors cursor-pointer"
-                >
-                  Autofill & Verify
-                </button>
-              </div>
-            )}
 
             {/* Verify CTA */}
             <button
@@ -556,6 +596,70 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <p className="text-xs text-slate-500">
               Welcome aboard, <strong>{name || email}</strong>. Opening your dashboard...
             </p>
+          </div>
+        )}
+
+        {/* TECH GUIDE MODAL: WHY REAL EMAIL REQUIRES AUTHENTICATION */}
+        {showTechGuide && (
+          <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-3xl p-6 z-20 overflow-y-auto animate-in fade-in flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center space-x-2">
+                  <Server className="w-5 h-5 text-blue-600" />
+                  <h4 className="font-extrabold text-sm text-slate-900">Real-Time Email Delivery Tech Guide</h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTechGuide(false)}
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-600 space-y-3">
+                <p>
+                  <strong>Why didn't the OTP reach your real mailbox yet?</strong>
+                </p>
+                <p className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 leading-relaxed">
+                  Cloud hosting platforms (Google Cloud, AWS, Vercel) <strong>intentionally block outbound unauthenticated port 25</strong> to prevent servers from being used by spambots. To send emails to real external accounts (like <span className="text-blue-700 font-bold">{email || 'your email'}</span>), you must authenticate with an email provider.
+                </p>
+
+                <p className="font-bold text-slate-900">Technologies Supported by Jobskül:</p>
+                <div className="space-y-2">
+                  <div className="p-2.5 rounded-xl border border-blue-100 bg-blue-50/50">
+                    <p className="font-bold text-blue-900 text-[11px]">1. Resend API (Recommended for Cloud Deployments)</p>
+                    <p className="text-[11px] text-blue-800 mt-0.5">
+                      Uses HTTPS on Port 443 (never blocked by cloud firewalls). Free tier provides 3,000 emails/month. Get an API key at <strong>resend.com</strong> & add <code className="bg-blue-100 px-1 py-0.5 rounded">RESEND_API_KEY</code>.
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50">
+                    <p className="font-bold text-slate-900 text-[11px]">2. Google Gmail SMTP</p>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      Uses TLS over port 465/587. Requires a 16-character <strong>Google App Password</strong> (generated via Google Account &gt; Security &gt; 2-Step Verification &gt; App Passwords). Your regular password will be rejected by Google.
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50">
+                    <p className="font-bold text-slate-900 text-[11px]">3. Institutional / Enterprise SMTP</p>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      Connect via Brevo, SendGrid, Amazon SES, or college mail relays by configuring <code className="bg-slate-200 px-1 py-0.5 rounded">SMTP_HOST</code>, <code className="bg-slate-200 px-1 py-0.5 rounded">SMTP_USER</code>, and <code className="bg-slate-200 px-1 py-0.5 rounded">SMTP_PASS</code>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 mt-4 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setShowTechGuide(false)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Understood & Return to Sign-In
+              </button>
+            </div>
           </div>
         )}
       </div>

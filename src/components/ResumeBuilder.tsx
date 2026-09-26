@@ -11,7 +11,8 @@ import {
   Layout,
   Plus,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 
 interface ResumeBuilderProps {
@@ -233,6 +234,39 @@ export const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
               <Lightbulb className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
               <span>{analysisResult.aiSuggestions}</span>
             </div>
+
+            {/* AI Technical Screening Questions for Fresher / Candidate */}
+            {analysisResult.languageSpecificQuestions && analysisResult.languageSpecificQuestions.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 flex items-center space-x-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                    <span>AI Fresher Screening Questions</span>
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-700 font-bold text-[9px]">
+                    CV Tailored
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {analysisResult.languageSpecificQuestions.map((qItem: any, idx: number) => (
+                    <div key={idx} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80 space-y-1">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                          {qItem.language}
+                        </span>
+                        <span className="text-slate-400 font-semibold">Level: {qItem.level || 'Fresher'}</span>
+                      </div>
+                      <p className="text-[11px] font-semibold text-slate-800">{qItem.question}</p>
+                      {qItem.expectedAnswer && (
+                        <p className="text-[10px] text-slate-600 bg-white p-1.5 rounded border border-slate-100">
+                          <strong className="text-emerald-700">Model Answer: </strong>{qItem.expectedAnswer}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Quick Edit Inputs */}
