@@ -69,8 +69,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenPromote }) => 
                 </button>
               </li>
               <li>
+                <button onClick={() => onNavigate('hireai-interview')} className="hover:text-white transition-colors cursor-pointer text-left">
+                  HireAI Interview (EN • हिन्दी • ଓଡ଼ିଆ)
+                </button>
+              </li>
+              <li>
                 <button onClick={() => onNavigate('hireai')} className="hover:text-white transition-colors cursor-pointer">
-                  Skill Assessment & Prep
+                  Skill Assessment & ATS Matcher
                 </button>
               </li>
               <li>

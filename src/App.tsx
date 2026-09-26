@@ -827,14 +827,25 @@ export function App() {
                         </button>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('hireai')}
-                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/40 text-purple-200 hover:text-white text-[11px] font-bold transition-all cursor-pointer shadow-xs ml-auto sm:ml-0"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                        <span>Try HireAI Matcher</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2 ml-auto sm:ml-0">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('hireai-interview')}
+                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[11px] font-bold transition-all cursor-pointer shadow-md hover:scale-102"
+                          title="Practice AI Technical & HR Interviews in English, Hindi & Odia"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                          <span>HireAI Interview (EN • हिन्दी • ଓଡ଼ିଆ)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('hireai')}
+                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/40 text-purple-200 hover:text-white text-[11px] font-bold transition-all cursor-pointer shadow-xs"
+                        >
+                          <span>Try HireAI Matcher</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -1441,12 +1452,13 @@ export function App() {
           <ResumeBuilder user={currentUser || users[0]} />
         )}
 
-        {/* TAB: JOBSKUL HIREAI */}
-        {activeTab === 'hireai' && (
+        {/* TAB: JOBSKUL HIREAI MULTILINGUAL INTERVIEW & CAREER SUITE */}
+        {(activeTab === 'hireai' || activeTab === 'hireai-interview' || activeTab === 'interview') && (
           <JobskulHireAI
             currentUser={currentUser}
             jobs={jobs}
-            onNavigateToLearn={() => setActiveTab('learn')}
+            onNavigateToLearn={() => setActiveTab('courses')}
+            initialSubTab={activeTab === 'hireai' ? 'interview' : 'interview'}
           />
         )}
 

@@ -29,7 +29,8 @@ import {
   UserCheck,
   Share2,
   Sparkles,
-  Award
+  Award,
+  MessageSquare
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -61,6 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [servicesDropdownOpen, setServicesDropdownOpen] = useState(false);
   const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
+  const [hireAiDropdownOpen, setHireAiDropdownOpen] = useState(false);
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [quickSearchOpen, setQuickSearchOpen] = useState(false);
@@ -240,23 +242,88 @@ export const Header: React.FC<HeaderProps> = ({
                 Companies
               </button>
 
-              {/* HireAI Partner Panel Link */}
-              <button
-                id="nav-hireai-partner"
-                onClick={() => handleNavClick('hireai-partner')}
-                className={`flex items-center space-x-1 px-2 2xl:px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'hireai-partner'
-                    ? 'text-purple-700 bg-purple-50 border border-purple-300/80 font-bold shadow-2xs'
-                    : 'text-purple-700 hover:bg-purple-50/60 border border-transparent font-bold'
-                }`}
-                title="JobskulHireAI Partner & Recruitment Team Dashboard"
+              {/* JobskulHireAI Suite & Multilingual Interview Dropdown */}
+              <div
+                className="relative"
+                onMouseEnter={() => setHireAiDropdownOpen(true)}
+                onMouseLeave={() => setHireAiDropdownOpen(false)}
               >
-                <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-pulse shrink-0" />
-                <span>JobskulHireAI</span>
-                <span className="px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-700 text-[9px] font-bold">
-                  Partner
-                </span>
-              </button>
+                <button
+                  id="nav-hireai-menu"
+                  onClick={() => handleNavClick('hireai-interview')}
+                  className={`flex items-center space-x-1 px-2 2xl:px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                    activeTab === 'hireai-interview' || activeTab === 'hireai' || activeTab === 'hireai-partner'
+                      ? 'text-purple-700 bg-purple-50 border border-purple-300/80 font-bold shadow-2xs'
+                      : 'text-purple-700 hover:bg-purple-50/60 border border-transparent font-bold'
+                  }`}
+                  title="JobskulHireAI • Practice AI Interviews in English, Hindi & Odia"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-pulse shrink-0" />
+                  <span>HireAI Interview</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-700 text-[9px] font-bold">
+                    EN•HI•OD
+                  </span>
+                  <ChevronDown className="w-3 h-3 ml-0.5 text-purple-400 shrink-0" />
+                </button>
+
+                {hireAiDropdownOpen && (
+                  <div className="absolute top-full left-0 w-80 bg-white rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-200/80 p-2 space-y-1 animate-in fade-in slide-in-from-top-1 z-50">
+                    <button
+                      onClick={() => handleNavClick('hireai-interview')}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-purple-50 flex items-start space-x-3 transition-colors cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-purple-100 border border-purple-200 flex items-center justify-center text-purple-700 shrink-0">
+                        <MessageSquare className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-900">HireAI Mock Interview</p>
+                          <span className="px-1.5 py-0.2 rounded bg-purple-100 text-purple-700 text-[9px] font-bold">
+                            EN • HI • OD
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">Practice live technical & HR rounds in English, हिन्दी & ଓଡ଼ିଆ</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleNavClick('hireai-partner')}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 flex items-start space-x-3 transition-colors cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                        <Briefcase className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-900">Partner & Recruiter Panel</p>
+                          <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px] font-bold">
+                            Partner
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">Enterprise recruitment team & candidate pipeline</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleNavClick('hireai')}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 flex items-start space-x-3 transition-colors cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                        <Target className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-900">Role Fit & ATS Matcher</p>
+                          <span className="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 text-[9px] font-bold">
+                            ATS
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">Candidate compatibility & skill gap analysis</p>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* Career Tools Dropdown */}
               <div
@@ -279,6 +346,24 @@ export const Header: React.FC<HeaderProps> = ({
 
                 {toolsDropdownOpen && (
                   <div className="absolute top-full left-0 w-80 bg-white rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-200/80 p-2 space-y-1 animate-in fade-in slide-in-from-top-1 z-50">
+                    <button
+                      onClick={() => handleNavClick('hireai-interview')}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-purple-50 flex items-start space-x-3 transition-colors cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shrink-0">
+                        <Sparkles className="w-4 h-4 animate-pulse" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-900">HireAI Mock Interview</p>
+                          <span className="px-1.5 py-0.2 rounded bg-purple-100 text-purple-700 border border-purple-200 text-[10px] font-geometric-mono font-bold">
+                            EN • HI • OD
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">Live AI audio/speech simulator in English, Hindi & Odia</p>
+                      </div>
+                    </button>
+
                     <button
                       onClick={() => handleNavClick('resume')}
                       className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 flex items-start space-x-3 transition-colors cursor-pointer"
@@ -897,6 +982,46 @@ export const Header: React.FC<HeaderProps> = ({
                   Search Jobs
                 </button>
               </div>
+
+              {/* Quick Jump Shortcuts */}
+              <div className="pt-3 border-t border-slate-100 space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Quick Tools & Interview Prep</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickSearchOpen(false);
+                      handleNavClick('hireai-interview');
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold border border-purple-200 flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                    <span>HireAI Interview (EN • हिन्दी • ଓଡ଼ିଆ)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickSearchOpen(false);
+                      handleNavClick('assessment');
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold border border-emerald-200 flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <Target className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Practice Lab</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickSearchOpen(false);
+                      handleNavClick('resume');
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-slate-500" />
+                    <span>ATS Resume Builder</span>
+                  </button>
+                </div>
+              </div>
             </form>
           </div>
         </div>
@@ -1022,18 +1147,35 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
 
               <button
-                onClick={() => handleNavClick('hireai-partner')}
+                onClick={() => handleNavClick('hireai-interview')}
                 className={`p-3 rounded-xl text-left flex items-center justify-between transition-all cursor-pointer ${
-                  activeTab === 'hireai-partner'
+                  activeTab === 'hireai-interview' || activeTab === 'interview'
                     ? 'bg-purple-700 text-white shadow-xs'
                     : 'bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200/80 font-bold'
                 }`}
               >
                 <div className="flex items-center space-x-2 truncate">
                   <Sparkles className="w-4 h-4 text-purple-600 shrink-0 animate-pulse" />
-                  <span className="truncate">JobskulHireAI</span>
+                  <span className="truncate">HireAI Interview</span>
                 </div>
                 <span className="px-1.5 py-0.5 rounded bg-purple-200 text-purple-800 text-[10px] font-bold shrink-0 ml-1">
+                  EN•HI•OD
+                </span>
+              </button>
+
+              <button
+                onClick={() => handleNavClick('hireai-partner')}
+                className={`p-3 rounded-xl text-left flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === 'hireai-partner'
+                    ? 'bg-purple-700 text-white shadow-xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200/70 font-semibold'
+                }`}
+              >
+                <div className="flex items-center space-x-2 truncate">
+                  <Briefcase className="w-4 h-4 text-purple-600 shrink-0" />
+                  <span className="truncate">HireAI Partner Portal</span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-bold shrink-0 ml-1">
                   Partner
                 </span>
               </button>
@@ -1064,11 +1206,11 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 <div className="flex items-center space-x-2 truncate">
-                  <Sparkles className="w-4 h-4 text-purple-600 shrink-0 animate-pulse" />
-                  <span className="truncate font-bold">HireAI Candidate Match</span>
+                  <Target className="w-4 h-4 text-purple-600 shrink-0" />
+                  <span className="truncate font-bold">Role Fit & ATS Matcher</span>
                 </div>
                 <span className="px-1.5 py-0.5 rounded bg-purple-200/80 text-purple-800 text-[10px] font-bold shrink-0 ml-1">
-                  AI
+                  ATS
                 </span>
               </button>
             </div>

@@ -182,11 +182,12 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
                     <span className="text-xs text-slate-500 font-medium">Link will be sent prior to interview</span>
                   )}
                   <button
-                    onClick={() => onNavigateToTab('hireai')}
-                    className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-blue-700 rounded-lg text-xs font-semibold flex items-center space-x-1 transition-colors cursor-pointer"
+                    onClick={() => onNavigateToTab('hireai-interview')}
+                    className="px-3 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer"
+                    title="Practice AI Mock Interview in English, Hindi & Odia"
                   >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>Interview Prep</span>
+                    <MessageSquare className="w-3.5 h-3.5 text-purple-600" />
+                    <span>HireAI Interview (EN • हिन्दी • ଓଡ଼ିଆ)</span>
                   </button>
                 </div>
               </div>
